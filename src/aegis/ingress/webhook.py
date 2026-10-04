@@ -68,6 +68,11 @@ def _process(inbox_id: str, message_id: str, event: dict) -> None:
         html = msg.get("html") or ""
         res = analyze_email(message_id, body, headers, html,
                             notify.message_scores(msg))
+        try:
+            from ..dashboard.store import record as record_verdict
+            record_verdict(res, body)
+        except Exception as e:  # noqa: BLE001 — dashboard must never break replies
+            print(f"[aegis] dashboard record failed: {e}", file=sys.stderr)
         notify.reply_to_message(inbox_id, message_id, res.card_markdown)
         print(f"[aegis] replied to {message_id}: {res.verdict.label.value}",
               file=sys.stderr)

@@ -86,6 +86,19 @@ uvicorn aegis.ingress.webhook:app --port 8000
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design and [BUILD_PLAN.md](BUILD_PLAN.md) for the day-by-day plan.
 
+## Live dashboard
+
+```bash
+PYTHONPATH=src .venv/bin/python -m uvicorn aegis.dashboard.app:app --port 8001
+# open http://localhost:8001
+```
+
+Every analysis the webhook completes is recorded to SQLite (`data/dashboard.db`)
+and served as JSON (`/api/verdicts`, `/api/campaigns`, `/api/redteam`,
+`/api/stats`) plus a live page: verdict feed with expandable evidence,
+campaign table, red-team board. Polls every 5s. The static case file
+(`dashboard/index.html`) remains the frozen record of the first live run.
+
 ## Current status (Oct 5)
 
 - Full pipeline implemented; offline suite green: `python -m unittest tests.test_offline` — **15/15 pass**.

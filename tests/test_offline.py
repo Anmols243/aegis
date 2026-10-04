@@ -158,5 +158,44 @@ class TestVisionRender(unittest.TestCase):
         self.assertGreater(os.path.getsize(path), 1000)
 
 
+class _FakeVerdict:
+    def __init__(self):
+        self.label = Label.SCAM
+        self.confidence = 0.41
+        self.score = 0.748
+        self.contributions = {"forensic": 0.42}
+        self.dissent = ["agents disagree"]
+
+
+class _FakeTriage:
+    sender = "Scammer <x@evil.example>"
+
+
+class _FakeResult:
+    email_id = "test-001"
+    triage = _FakeTriage()
+    forensic = None
+    vision = None
+    sandbox = []
+    verdict = _FakeVerdict()
+    campaign_note = ""
+
+
+class TestDashboardStore(unittest.TestCase):
+    def test_record_list_stats_roundtrip(self):
+        from aegis.dashboard.store import list_verdicts, record, stats
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "dash.db")
+            record(_FakeResult(), body="hello", path=path)
+            record(_FakeResult(), body="hello again", path=path)  # upsert
+            vs = list_verdicts(path=path)
+            self.assertEqual(len(vs), 1)
+            self.assertEqual(vs[0]["label"], "SCAM")
+            self.assertEqual(vs[0]["sender"], "Scammer <x@evil.example>")
+            s = stats(path=path)
+            self.assertEqual(s["total"], 1)
+            self.assertEqual(s["by_label"]["SCAM"], 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

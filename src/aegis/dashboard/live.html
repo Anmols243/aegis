@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AEGIS — live</title>
+<style>
+  :root{
+    --paper:#e9eae3; --paper-deep:#dedfd6; --ink:#1b1e1b; --ink-soft:#4a4e48;
+    --ink-faint:#7c8078; --rule:#c4c6ba;
+    --scam:#b3271e; --suspicious:#96690e; --safe:#2c6e3f;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .sheet{max-width:960px;margin:0 auto;padding:40px 32px 80px}
+  .masthead{display:flex;justify-content:space-between;align-items:center;
+    border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px;
+    flex-wrap:wrap;gap:10px}
+  .wordmark{font-weight:800;font-size:26px;letter-spacing:-0.03em}
+  .wordmark span{color:var(--scam)}
+  .live{display:flex;align-items:center;gap:8px;font-family:var(--mono);
+    font-size:12px;color:var(--ink-soft)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--safe);
+    animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @media (prefers-reduced-motion:reduce){.dot{animation:none}}
+  .stats{display:flex;gap:24px;flex-wrap:wrap;padding:14px 0;
+    border-bottom:1px solid var(--rule);margin-bottom:32px;
+    font-family:var(--mono);font-size:13px;color:var(--ink-soft)}
+  .stats b{color:var(--ink);font-size:17px;display:block}
+  .stats .scam b{color:var(--scam)} .stats .susp b{color:var(--suspicious)}
+  .stats .ok b{color:var(--safe)}
+  h2{font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--ink-faint);
+    border-bottom:1px solid var(--rule);padding-bottom:8px;margin:44px 0 4px}
+  .card{border:1px solid var(--rule);background:#f0f1ea;margin:14px 0;
+    cursor:pointer}
+  .card-head{display:grid;grid-template-columns:110px 1fr auto;gap:14px;
+    padding:14px 18px;align-items:center}
+  .pill{font-family:var(--mono);font-size:12px;font-weight:700;border:1.5px solid;
+    border-radius:20px;padding:2px 12px;white-space:nowrap;text-align:center}
+  .pill.SCAM{color:var(--scam);border-color:var(--scam)}
+  .pill.SUSPICIOUS{color:var(--suspicious);border-color:var(--suspicious)}
+  .pill.LIKELY_SAFE{color:var(--safe);border-color:var(--safe)}
+  .card-meta{min-width:0}
+  .card-meta .sender{font-weight:650;font-size:14.5px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .card-meta .sub{font-family:var(--mono);font-size:12px;color:var(--ink-faint)}
+  .score{font-family:var(--mono);font-size:13px;text-align:right;white-space:nowrap}
+  .card-body{display:none;border-top:1px solid var(--rule);padding:16px 18px}
+  .card.open .card-body{display:block}
+  .meter{height:6px;background:var(--paper-deep);position:relative;margin:8px 0}
+  .meter i{position:absolute;left:0;top:0;bottom:0;background:var(--ink-soft)}
+  .flags{margin:10px 0 0;padding:0;list-style:none}
+  .flags li{font-size:13.5px;padding:8px 0;border-bottom:1px dashed var(--rule)}
+  .flags li:last-child{border-bottom:none}
+  .flags code{font-family:var(--mono);font-size:12px;background:var(--paper-deep);
+    padding:1px 6px;border-radius:3px}
+  .dissent{margin-top:10px;font-size:13px;color:var(--suspicious)}
+  .camp{margin-top:10px;font-size:13px;color:var(--ink-soft)}
+  .contrib{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-top:8px}
+  .empty{padding:40px 0;color:var(--ink-faint);font-size:14px;max-width:60ch}
+  .empty code{font-family:var(--mono);background:var(--paper-deep);
+    padding:1px 6px;border-radius:3px;font-size:13px}
+  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px}
+  th{text-align:left;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);
+    padding:6px 10px 6px 0;border-bottom:1px solid var(--ink);font-weight:600}
+  td{padding:8px 10px 8px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+  td.mono{font-family:var(--mono);font-size:12.5px}
+  footer{margin-top:56px;border-top:2px solid var(--ink);padding-top:14px;
+    font-family:var(--mono);font-size:12px;color:var(--ink-faint);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  @media (max-width:640px){.card-head{grid-template-columns:1fr;gap:6px}
+    .score{text-align:left}.sheet{padding:24px 16px 64px}}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="masthead">
+    <div class="wordmark">AEGIS<span>.</span> live</div>
+    <div class="live"><span class="dot"></span>LIVE · polling every 5s</div>
+  </header>
+
+  <div class="stats" id="stats"><span>connecting…</span></div>
+
+  <h2>Verdict feed</h2>
+  <div id="feed"><div class="empty">connecting…</div></div>
+
+  <h2>Campaigns</h2>
+  <div id="campaigns"><div class="empty">connecting…</div></div>
+
+  <h2>Red team</h2>
+  <div id="redteam"><div class="empty">connecting…</div></div>
+
+  <footer>
+    <span>AEGIS · ForgeHacks 2026 · AI + Cybersecurity</span>
+    <span id="updated"></span>
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const rel = iso => {
+  const d = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (d < 60) return "just now";
+  if (d < 3600) return Math.floor(d/60) + "m ago";
+  if (d < 86400) return Math.floor(d/3600) + "h ago";
+  return Math.floor(d/86400) + "d ago";
+};
+
+async function get(p) {
+  const r = await fetch(p);
+  if (!r.ok) throw new Error(p + " " + r.status);
+  return r.json();
+}
+
+function renderStats(s) {
+  const b = s.by_label || {};
+  $("#stats").innerHTML =
+    `<span class="t"><b>${s.total}</b>analyzed</span>` +
+    `<span class="scam"><b>${b.SCAM||0}</b>scam</span>` +
+    `<span class="susp"><b>${b.SUSPICIOUS||0}</b>suspicious</span>` +
+    `<span class="ok"><b>${b.LIKELY_SAFE||0}</b>likely safe</span>`;
+}
+
+function renderFeed(vs) {
+  if (!vs.length) {
+    $("#feed").innerHTML = `<div class="empty">No verdicts yet. Forward a
+      suspicious email to <code>zesty-willow-3025@homingbox.net</code> and it
+      will appear here seconds after analysis.</div>`;
+    return;
+  }
+  $("#feed").innerHTML = vs.map(v => {
+    const flags = JSON.parse(v.red_flags || "[]");
+    const contrib = JSON.parse(v.contributions || "{}");
+    const dissent = JSON.parse(v.dissent || "[]");
+    return `<div class="card" data-id="${esc(v.email_id)}">
+      <div class="card-head">
+        <span class="pill ${esc(v.label)}">${esc(v.label)}</span>
+        <div class="card-meta">
+          <div class="sender">${esc(v.sender || v.body_preview.slice(0, 70) || v.email_id)}</div>
+          <div class="sub">${esc(v.email_id)} · ${rel(v.received_at)}</div>
+        </div>
+        <div class="score">${Number(v.score).toFixed(2)} · ${Math.round(v.confidence*100)}%</div>
+      </div>
+      <div class="card-body">
+        <div class="meter"><i style="width:${Math.round(v.score*100)}%"></i></div>
+        ${v.campaign_note ? `<div class="camp">🕸️ ${esc(v.campaign_note)}</div>` : ""}
+        ${flags.length ? `<ul class="flags">${flags.map(f =>
+          `<li><b>${esc(f.title)}</b><br><code>${esc(f.evidence)}</code></li>`).join("")}</ul>`
+          : `<p style="font-size:13px;color:var(--ink-faint)">No high-severity flags.</p>`}
+        ${dissent.length ? `<div class="dissent">Dissent: ${dissent.map(esc).join("; ")}</div>` : ""}
+        <div class="contrib">signal weights → ${Object.entries(contrib).map(
+          ([k,x]) => `${esc(k)} ${Number(x).toFixed(2)}`).join(" · ")}</div>
+      </div>
+    </div>`;
+  }).join("");
+  document.querySelectorAll(".card").forEach(c =>
+    c.querySelector(".card-head").addEventListener("click", () =>
+      c.classList.toggle("open")));
+}
+
+function renderCampaigns(cs) {
+  if (!cs.length) {
+    $("#campaigns").innerHTML = `<div class="empty">No campaigns clustered yet.
+      Run <code>scripts/seed_campaign.py</code> for the demo campaign.</div>`;
+    return;
+  }
+  $("#campaigns").innerHTML = `<table><thead><tr><th>Campaign</th>
+    <th>Emails</th><th>Shared infrastructure</th></tr></thead><tbody>` +
+    cs.map((c,i) => `<tr><td class="mono">#${i+1}</td><td class="mono">${c.n_emails}</td>
+      <td class="mono">${c.infra.map(esc).join("<br>")}</td></tr>`).join("") +
+    `</tbody></table>`;
+}
+
+function renderRedteam(r) {
+  $("#redteam").innerHTML =
+    `<p style="font-size:13.5px;color:var(--ink-soft);margin-top:12px">
+      ${r.total} adversarial fixtures banked · ${r.open_misses} open misses.
+      Every miss is a permanent regression test.</p>` +
+    (r.cases.length ? `<table><thead><tr><th>Fixture</th><th>Verdict</th>
+      <th>Score</th><th>Mutation axes</th></tr></thead><tbody>` +
+      r.cases.map(c => `<tr><td class="mono">${esc(c.id)}</td>
+        <td><span class="pill ${esc(c.actual_label)}">${esc(c.actual_label)}</span></td>
+        <td class="mono">${Number(c.score).toFixed(2)}</td>
+        <td class="mono">${(c.mutation_axes||[]).map(esc).join(", ")}</td></tr>`).join("") +
+      `</tbody></table>` : "");
+}
+
+async function refresh() {
+  try {
+    const [s, vs, cs, r] = await Promise.all([
+      get("/api/stats"), get("/api/verdicts"),
+      get("/api/campaigns"), get("/api/redteam")]);
+    renderStats(s); renderFeed(vs); renderCampaigns(cs); renderRedteam(r);
+    $("#updated").textContent = "updated " + new Date().toLocaleTimeString();
+  } catch (e) {
+    $("#updated").textContent = "connection lost — retrying…";
+  }
+}
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

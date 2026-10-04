@@ -4,4 +4,5 @@ __pycache__/
 .env
 data/inbox/
 data/*.json
+data/*.db
 !data/.gitkeep
