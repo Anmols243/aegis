@@ -21,7 +21,7 @@ from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from .. import notify
-from ..config import get_settings
+from ..config import agentboxd_webhook_secret
 from ..orchestrator import analyze_email
 
 app = FastAPI(title="AEGIS ingress")
@@ -66,12 +66,8 @@ def _process(inbox_id: str, message_id: str, event: dict) -> None:
         body = msg.get("text") or msg.get("extracted_text") or ""
         headers = msg.get("headers") or ""
         html = msg.get("html") or ""
-        scores = msg.get("scores") or {}
-        agentboxd_scores = {
-            "phishing": scores.get("phishing"),
-            "injection": scores.get("injection"),
-        }
-        res = analyze_email(message_id, body, headers, html, agentboxd_scores)
+        res = analyze_email(message_id, body, headers, html,
+                            notify.message_scores(msg))
         notify.reply_to_message(inbox_id, message_id, res.card_markdown)
         print(f"[aegis] replied to {message_id}: {res.verdict.label.value}",
               file=sys.stderr)
@@ -94,7 +90,7 @@ async def agentboxd_webhook(
     x_mailroom_signature: str | None = Header(default=None),
 ) -> JSONResponse:
     body = await request.body()
-    secret = get_settings().agentboxd_webhook_secret
+    secret = agentboxd_webhook_secret()
     if not verify_signature(body, x_mailroom_signature, secret):
         raise HTTPException(status_code=401, detail="bad webhook signature")
 

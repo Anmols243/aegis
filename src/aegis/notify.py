@@ -13,7 +13,7 @@ import uuid
 
 import httpx
 
-from .config import get_settings
+from .config import agentboxd_api_key
 
 BASE_URL = "https://api.agentboxd.com"
 
@@ -21,7 +21,7 @@ BASE_URL = "https://api.agentboxd.com"
 def _client() -> httpx.Client:
     return httpx.Client(
         base_url=BASE_URL,
-        headers={"Authorization": f"Bearer {get_settings().agentboxd_api_key}"},
+        headers={"Authorization": f"Bearer {agentboxd_api_key()}"},
         timeout=30.0,
     )
 
@@ -56,3 +56,19 @@ def get_message(message_id: str) -> dict:
         r = c.get(f"/v1/messages/{message_id}")
         r.raise_for_status()
         return r.json()
+
+
+def message_scores(msg: dict) -> dict:
+    """Extract the AgentBoxD phishing/injection signals from a message payload.
+
+    Prefers numeric scores when present; falls back to the ai:* labels.
+    """
+    scores = msg.get("scores") or {}
+    labels = msg.get("labels") or []
+    phishing = scores.get("phishing")
+    if phishing is None and "ai:phishing" in labels:
+        phishing = 0.9
+    injection = scores.get("injection") or scores.get("prompt_injection")
+    if injection is None and "ai:injection-risk" in labels:
+        injection = 0.9
+    return {"phishing": phishing, "injection": injection}
