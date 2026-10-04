@@ -1,0 +1,13 @@
+{
+  "id": "rt-20261004-002",
+  "variant": "Dear Customer,\n\nWe detected unusual activity on your P\u0430yP\u0430l account. Your account will be\nlimited by end of business today unless you verify your identity immediately.\n\nVerify now: http://paypa1-secure.com/verify?session=8f3k2\n\nFailure to act will result in permanent suspension.\n\nP\u0430yP\u0430l Security Team",
+  "expected_label": "SCAM",
+  "actual_label": "SUSPICIOUS",
+  "score": 0.691,
+  "first_missed_at": "2026-10-04T20:42:47.017356+00:00",
+  "mutation_axes": [
+    "homoglyph-brand",
+    "rephrased-urgency"
+  ],
+  "caught_after_fix": false
+}

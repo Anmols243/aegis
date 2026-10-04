@@ -1,0 +1,13 @@
+{
+  "id": "rt-20261004-005",
+  "variant": "Verify now: http://paypa1-secure.com/verify?session=8f3k2\n\nDear Customer,\n\nWe detected unusual activity on your PayPal account. Your account will be\nlimited within 24 hours unless you confirm your account ownership immediately.\n\nFailure to act will result in permanent suspension.\n\nPayPal Security Team",
+  "expected_label": "SCAM",
+  "actual_label": "SUSPICIOUS",
+  "score": 0.691,
+  "first_missed_at": "2026-10-04T20:43:40.508492+00:00",
+  "mutation_axes": [
+    "rephrased-lure",
+    "restructured"
+  ],
+  "caught_after_fix": false
+}
