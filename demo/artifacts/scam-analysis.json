@@ -1,0 +1,157 @@
+{
+  "email_id": "demo-artifact-phish-001",
+  "raw_body": "Dear Customer,\n\nWe detected unusual activity on your PayPal account. Your account will be\nlimited within 24 hours unless you verify your identity immediately.\n\nVerify now: http://paypa1-secure.com/verify?session=8f3k2\n\nFailure to act will result in permanent suspension.\n\nPayPal Security Team",
+  "triage": {
+    "sender": "",
+    "reply_to": "",
+    "urls": [
+      "http://paypa1-secure.com/verify?session=8f3k2"
+    ],
+    "domains": [
+      "paypa1-secure.com"
+    ],
+    "phone_numbers": [],
+    "attachment_names": [],
+    "urgency_signals": [
+      "limited within 24 hours",
+      "verify your identity immediately",
+      "Failure to act will result in permanent suspension"
+    ],
+    "requested_action": "Click the verification link to verify identity and prevent account limitation/suspension",
+    "language": "en",
+    "brand_mentions": [
+      "PayPal"
+    ]
+  },
+  "signals": [],
+  "forensic": {
+    "findings": [
+      {
+        "claim": "The verification link uses a lookalike domain 'paypa1-secure.com' with a homoglyph ('1' replacing 'l') and added words, not the legitimate paypal.com domain.",
+        "severity": "high",
+        "evidence": {
+          "artifact": "url",
+          "excerpt": "http://paypa1-secure.com/verify?session=8f3k2"
+        }
+      },
+      {
+        "claim": "The email uses urgency and threat language to pressure the recipient into acting without thinking.",
+        "severity": "high",
+        "evidence": {
+          "artifact": "body",
+          "excerpt": "Your account will be limited within 24 hours unless you verify your identity immediately."
+        }
+      },
+      {
+        "claim": "The email threatens permanent account suspension to coerce compliance, a classic fear-based phishing tactic.",
+        "severity": "high",
+        "evidence": {
+          "artifact": "body",
+          "excerpt": "Failure to act will result in permanent suspension."
+        }
+      },
+      {
+        "claim": "The message impersonates PayPal's security team to lend false authority to the request.",
+        "severity": "high",
+        "evidence": {
+          "artifact": "body",
+          "excerpt": "PayPal Security Team"
+        }
+      },
+      {
+        "claim": "The email requests identity verification via an external link, consistent with credential harvesting.",
+        "severity": "high",
+        "evidence": {
+          "artifact": "body",
+          "excerpt": "Verify now: http://paypa1-secure.com/verify?session=8f3k2"
+        }
+      },
+      {
+        "claim": "The greeting is generic rather than using the account holder's name, which legitimate PayPal communications typically include.",
+        "severity": "medium",
+        "evidence": {
+          "artifact": "body",
+          "excerpt": "Dear Customer,"
+        }
+      },
+      {
+        "claim": "The link uses unencrypted HTTP rather than HTTPS, which is atypical for a legitimate financial services verification page.",
+        "severity": "medium",
+        "evidence": {
+          "artifact": "url",
+          "excerpt": "http://paypa1-secure.com/verify?session=8f3k2"
+        }
+      }
+    ],
+    "deception_techniques": [
+      "lookalike-domain",
+      "urgency-pressure",
+      "authority-impersonation",
+      "credential-harvest"
+    ],
+    "risk_score": 0.97,
+    "summary": "This is a phishing email impersonating PayPal that directs victims to a lookalike domain (paypa1-secure.com) to steal credentials. It uses urgency and suspension threats to pressure the recipient into clicking the malicious link."
+  },
+  "vision": null,
+  "sandbox": [
+    {
+      "url": "http://paypa1-secure.com/verify?session=8f3k2",
+      "final_url": "",
+      "kind": "unreachable",
+      "status_code": null,
+      "content_type": "",
+      "hostname": "paypa1-secure.com",
+      "page_title": "",
+      "redirect_chain": [],
+      "has_password_form": false,
+      "has_login_form": false,
+      "download_detected": false,
+      "fetch_duration_s": 0.15,
+      "failure_reason": "[Errno 104] Connection reset by peer",
+      "note": "[Errno 104] Connection reset by peer"
+    }
+  ],
+  "verdict": {
+    "label": "SCAM",
+    "confidence": 0.41,
+    "score": 0.748,
+    "contributions": {
+      "agentboxd_phishing": 0.23,
+      "forensic": 0.42437499999999995,
+      "sandbox": 0.09375
+    },
+    "dissent": [
+      "agents disagree: forensic=0.97 vs sandbox=0.30"
+    ],
+    "strongest": [
+      "forensic",
+      "agentboxd_phishing"
+    ],
+    "weakest": [
+      "sandbox"
+    ],
+    "agreement": "split",
+    "evidence_completeness": 0.75
+  },
+  "card_markdown": "\ud83d\uded1 **AEGIS verdict: SCAM**\nConfidence `\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591` 41% \u00b7 score 0.75\n\n**Red flags**\n- **The verification link uses a lookalike domain 'paypa1-secure.com' with a homoglyph ('1' replacing 'l') and added words, not the legitimate paypal.com domain.** \u2014 _http://paypa1-secure.com/verify?session=8f3k2_\n- **The email uses urgency and threat language to pressure the recipient into acting without thinking.** \u2014 _Your account will be limited within 24 hours unless you verify your identity immediately._\n- **The email threatens permanent account suspension to coerce compliance, a classic fear-based phishing tactic.** \u2014 _Failure to act will result in permanent suspension._\n- **The message impersonates PayPal's security team to lend false authority to the request.** \u2014 _PayPal Security Team_\n- **The email requests identity verification via an external link, consistent with credential harvesting.** \u2014 _Verify now: http://paypa1-secure.com/verify?session=8f3k2_\n\n**Strongest signals**\n- forensic (0.42)\n- agentboxd_phishing (0.23)\n_Signal agreement: split \u00b7 evidence completeness 75%_\n\n**Analyst notes**\n- agents disagree: forensic=0.97 vs sandbox=0.30\n\n\ud83d\udd78\ufe0f Linked to a known scam campaign \u2014 17 related emails share infrastructure with this one. Linked to 10 related email(s); strongest tie is to demo-phish-001 (medium confidence \u2014 shares domain + tpl + url: domain:paypa1-secure.com, tpl:7af229f91472e7c189dece05c237c5887d63e25d1965c7a5d7d318699bcfaff4, url:http://paypa1-secure.com/verify?session=8f3k2).\n\n**What to do next**\n1. Do not click any link, download anything, or reply.\n2. If you entered credentials anywhere, change that password now and enable 2FA.\n3. Report it: forward to your organization's security team or reportphishing@apwg.org.\n\n\u2014 _Analyzed by AEGIS \u00b7 every claim above cites the evidence it came from_",
+  "campaign_note": "Linked to a known scam campaign \u2014 17 related emails share infrastructure with this one. Linked to 10 related email(s); strongest tie is to demo-phish-001 (medium confidence \u2014 shares domain + tpl + url: domain:paypa1-secure.com, tpl:7af229f91472e7c189dece05c237c5887d63e25d1965c7a5d7d318699bcfaff4, url:http://paypa1-secure.com/verify?session=8f3k2).",
+  "stage_timings": {
+    "triage": {
+      "seconds": 4.13,
+      "ok": true
+    },
+    "signals": {
+      "seconds": 0.0,
+      "ok": true
+    },
+    "sandbox": {
+      "seconds": 0.15,
+      "ok": true
+    },
+    "forensic": {
+      "seconds": 5.51,
+      "ok": true
+    }
+  },
+  "note": "Captured from a real AEGIS pipeline run. Deterministic replay only \u2014 no live calls."
+}
