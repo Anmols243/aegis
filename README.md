@@ -5,8 +5,7 @@
 
 Forward any suspicious email to AEGIS. A pipeline of specialist AI agents — triage, forensic analysis, visual brand-impersonation inspection, link sandboxing — dissects it, cross-references a threat-intelligence graph of known scam campaigns, and replies with an **evidence-cited verdict: SCAM / SUSPICIOUS / LIKELY SAFE**. A red-team engine continuously mutates real scams to probe the pipeline's blind spots; every miss becomes a permanent regression test.
 
-![AEGIS case-file dashboard](dashboard/screenshot.png)
-*The case-file dashboard — open [`dashboard/index.html`](dashboard/index.html) for the full page.*
+*See the case-file dashboard from the live run: [`dashboard/index.html`](dashboard/index.html). (A rendered screenshot, `dashboard/screenshot.png`, is in the repo for the Devpost upload.)*
 
 ## The problem
 
