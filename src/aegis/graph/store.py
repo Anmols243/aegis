@@ -44,6 +44,40 @@ class EmailEntities:
     body: str = ""
 
 
+@dataclass
+class Relationship:
+    """An explicit pairwise link between two emails.
+
+    Unlike the transitive connected-component campaigns, a Relationship
+    explains WHY two messages are linked and how strong the link is.
+    """
+    other_email_id: str
+    shared: list[str]            # infra node names, e.g. "domain:evil.com"
+    strength: str                # high | medium | weak
+    why: str                     # human-readable, e.g. "shares domain + phone"
+
+
+# Node types that strongly indicate shared operators (vs. coincidental).
+_STRONG_TYPES = {"sender", "domain", "ip", "phone"}
+_WEAK_TYPES = {"url", "template_hash"}
+
+
+def _node_type(node: str) -> str:
+    return node.split(":", 1)[0] if ":" in node else ""
+
+
+def _strength_for(shared: list[str]) -> tuple[str, str]:
+    types = [_node_type(n) for n in shared]
+    strong = sum(1 for t in types if t in _STRONG_TYPES)
+    total = len(shared)
+    pretty = " + ".join(sorted(set(types)))
+    if strong >= 2 or total >= 4:
+        return "high", f"shares {pretty}"
+    if strong >= 1 or total >= 2:
+        return "medium", f"shares {pretty}"
+    return "weak", f"shares only {pretty}"
+
+
 class ThreatGraph:
     def __init__(self, path: str = "data/threat_graph.json"):
         self.path = path
@@ -102,6 +136,47 @@ class ThreatGraph:
             if node in camp:
                 return camp
         return None
+
+    def relationships(self, email_id: str) -> list[Relationship]:
+        """Explicit pairwise links for one email, strongest first.
+
+        Each relationship names the shared infrastructure and a strength —
+        e.g. sharing a domain + phone is HIGH, sharing only one common
+        URL shortener is WEAK. This is the explainable complement to the
+        transitive campaign components.
+        """
+        node = f"email:{email_id}"
+        if node not in self.g:
+            return []
+        my_infra = {n for n in self.g.neighbors(node)
+                    if self.g.nodes[n].get("type") in INFRA_TYPES}
+        rels: list[Relationship] = []
+        for other in self.g.nodes:
+            if not other.startswith("email:") or other == node:
+                continue
+            other_infra = {n for n in self.g.neighbors(other)
+                           if self.g.nodes[n].get("type") in INFRA_TYPES}
+            shared = sorted(my_infra & other_infra)
+            if not shared:
+                continue
+            strength, why = _strength_for(shared)
+            rels.append(Relationship(
+                other_email_id=other.split("email:", 1)[1],
+                shared=shared, strength=strength, why=why))
+        order = {"high": 0, "medium": 1, "weak": 2}
+        rels.sort(key=lambda r: (order[r.strength], r.other_email_id))
+        return rels
+
+    def explain_campaign(self, email_id: str) -> str:
+        """One-paragraph, judge-readable account of an email's campaign ties."""
+        rels = self.relationships(email_id)
+        if not rels:
+            return "No campaign linkage found for this email."
+        top = rels[0]
+        others = len(rels)
+        return (f"Linked to {others} related email(s); strongest tie is to "
+                f"{top.other_email_id} ({top.strength} confidence — "
+                f"{top.why}: {', '.join(top.shared[:4])}).")
 
     # -- persistence ---------------------------------------------------
     def save(self) -> None:

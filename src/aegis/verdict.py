@@ -35,6 +35,13 @@ def render(card: VerdictCard) -> str:
         for f in card.red_flags:
             lines.append(f"- **{f.title}** — _{f.evidence}_")
         lines.append("")
+    if v.strongest:
+        lines.append("**Strongest signals**")
+        for s in v.strongest:
+            lines.append(f"- {s} ({v.contributions.get(s, 0):.2f})")
+        lines.append(f"_Signal agreement: {v.agreement} · "
+                     f"evidence completeness {v.evidence_completeness:.0%}_")
+        lines.append("")
     if v.dissent:
         lines.append("**Analyst notes**")
         for d in v.dissent:

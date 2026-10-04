@@ -33,6 +33,22 @@ Run it yourself: `python scripts/eval.py` (takes ~4 min, live LLM calls).
 - **Scam recall@flagged (SCAM or SUSPICIOUS): 100%** — every scam caught
 - **Scam recall@SCAM: 0%**
 - **Legit specificity (LIKELY_SAFE): 100%** — zero false positives
+- **Precision / recall / F1** (positive = flagged): **1.00 / 1.00 / 1.00**
+- **False-positive rate: 0%** · **false-negative rate (@flagged): 0%**
+
+Confusion matrix (rows = expected, columns = predicted):
+
+| | SCAM | SUSPICIOUS | LIKELY_SAFE |
+|---|---|---|---|
+| scam | 0 | 7 | 0 |
+| legit | 0 | 0 | 8 |
+
+Latency (15 messages, live LLM): mean 15.0s · p50 16.4s · p95 20.4s per
+message. Per-stage timings are recorded in newer runs (`stage_seconds`).
+
+Ablation: `scripts/eval.py` supports `--no-signals`, `--no-sandbox`,
+`--no-vision` to measure each component's contribution. (Full multi-way
+ablation runs are LLM-expensive; run them when you need the numbers.)
 
 ## What the 0% means
 

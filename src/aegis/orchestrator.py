@@ -1,18 +1,21 @@
 """Orchestrator: the AEGIS pipeline.
 
-Triage → fan-out (forensic + vision + sandbox) → threat graph → arbiter
-→ verdict card. Individual stages fail closed: an exception in any
+Triage → fan-out (forensic + vision + sandbox, in parallel) → threat graph
+→ arbiter → verdict card. Individual stages fail closed: an exception in any
 non-triage stage degrades the verdict toward SUSPICIOUS, never toward safe.
 """
 from __future__ import annotations
 
+import concurrent.futures
 import sys
+import time
 from dataclasses import dataclass, field
 
 from .agents import triage as triage_mod
 from .agents.arbiter import Verdict, arbitrate
 from .agents.forensic import ForensicReport, analyze as forensic_analyze
 from .agents.sandbox import SandboxVerdict, inspect_urls
+from .agents.signals import SignalReport, analyze_signals
 from .agents.vision_inspector import VisionVerdict
 from .graph.store import EmailEntities, ThreatGraph
 from .verdict import DEFAULT_ACTION_PLANS, RedFlag, VerdictCard, render
@@ -24,21 +27,29 @@ MAX_SANDBOX_URLS = 5
 class AnalysisResult:
     email_id: str
     triage: triage_mod.TriageResult | None = None
+    signals: SignalReport | None = None
     forensic: ForensicReport | None = None
     vision: VisionVerdict | None = None
     sandbox: list[SandboxVerdict] = field(default_factory=list)
     verdict: Verdict | None = None
     card_markdown: str = ""
     campaign_note: str = ""
+    # Per-stage latency + outcome, for the dashboard and eval. A failed
+    # stage records {"ok": False} — the arbiter fails closed on the rest.
+    stage_timings: dict = field(default_factory=dict)
 
 
-def _try(stage: str, fn, *args, **kwargs):
-    """Run a stage; on failure log and return None (arbiter fails closed)."""
+def _timed(stage: str, fn, *args, **kwargs):
+    """Run a stage, returning (result, timing_dict). Never raises."""
+    t0 = time.time()
     try:
-        return fn(*args, **kwargs)
-    except Exception as e:  # noqa: BLE001 — the pipeline must never crash on a stage
-        print(f"[aegis] stage '{stage}' failed, degrading: {e}", file=sys.stderr)
-        return None
+        result = fn(*args, **kwargs)
+        return result, {"seconds": round(time.time() - t0, 2), "ok": True}
+    except Exception as e:  # noqa: BLE001 — the pipeline must never crash
+        print(f"[aegis] stage '{stage}' failed, degrading: {e}",
+              file=sys.stderr)
+        return None, {"seconds": round(time.time() - t0, 2), "ok": False,
+                      "error": str(e)[:200]}
 
 
 def analyze_email(email_id: str, raw_body: str, headers: str = "",
@@ -48,24 +59,57 @@ def analyze_email(email_id: str, raw_body: str, headers: str = "",
 
     # Stage 1 — triage: always on. If the LLM is unreachable, this raises and
     # the caller (webhook) logs it; nothing is sent to the user.
+    t0 = time.time()
     res.triage = triage_mod.triage(raw_body, headers)
+    res.stage_timings["triage"] = {"seconds": round(time.time() - t0, 2),
+                                   "ok": True}
 
-    # Stage 2 — fan-out.
+    # Stage 1b — deterministic security signals: pure functions over the
+    # artifact, no LLM. These are VERIFIED FACTS the forensic analyst
+    # reasons over (instead of re-deriving them and possibly hallucinating).
+    t0 = time.time()
+    triage_dict = res.triage.__dict__
+    res.signals = analyze_signals(raw_body, headers, html, triage_dict)
+    res.stage_timings["signals"] = {"seconds": round(time.time() - t0, 2),
+                                    "ok": True}
+    signals_ctx = "\n".join(
+        f"- [{s.severity}] {s.name}: {s.detail} (evidence: {s.evidence})"
+        for s in res.signals.signals) or "(no deterministic signals fired)"
+
+    # Stage 2 — parallel fan-out. Forensic, vision, and sandbox are
+    # independent given triage, so they run concurrently. One stage failing
+    # degrades that signal to None (arbiter fails closed) without touching
+    # the others. Timings are recorded for the dashboard and eval.
     ab = agentboxd_scores or {}
-    res.forensic = _try(
-        "forensic", forensic_analyze,
-        raw_body, headers,
-        triage=res.triage.__dict__,
-        agentboxd_scores={"phishing": ab.get("phishing"),
-                         "injection": ab.get("injection")},
-    )
+    jobs: dict[str, tuple] = {
+        "forensic": (forensic_analyze, (raw_body, headers),
+                     {"triage": {**triage_dict,
+                                 "deterministic_signals": signals_ctx},
+                      "agentboxd_scores": {
+                          "phishing": ab.get("phishing"),
+                          "injection": ab.get("injection")}}),
+    }
     if html:
         from .agents.vision_inspector import inspect as vision_inspect
-        res.vision = _try("vision", vision_inspect, html)
+        jobs["vision"] = (vision_inspect, (html,), {})
     if res.triage.urls:
-        from .agents.sandbox import inspect_urls
-        res.sandbox = _try("sandbox", inspect_urls,
-                           res.triage.urls[:MAX_SANDBOX_URLS]) or []
+        jobs["sandbox"] = (inspect_urls,
+                           (res.triage.urls[:MAX_SANDBOX_URLS],), {})
+
+    with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(jobs)) as pool:
+        futures = {pool.submit(_timed, name, fn, *a, **k): name
+                   for name, (fn, a, k) in jobs.items()}
+        results = {}
+        for fut in concurrent.futures.as_completed(futures):
+            name = futures[fut]
+            result, timing = fut.result()
+            results[name] = result
+            res.stage_timings[name] = timing
+
+    res.forensic = results.get("forensic")
+    res.vision = results.get("vision")
+    res.sandbox = results.get("sandbox") or []
 
     # Stage 3 — threat-intel graph.
     graph = ThreatGraph()
@@ -80,9 +124,10 @@ def analyze_email(email_id: str, raw_body: str, headers: str = "",
     camp = graph.campaign_for(email_id)
     if camp:
         others = sum(1 for n in camp if n.startswith("email:"))
+        explanation = graph.explain_campaign(email_id)
         res.campaign_note = (
             f"Linked to a known scam campaign — {others} related emails "
-            f"share infrastructure with this one."
+            f"share infrastructure with this one. {explanation}"
         )
 
     # Stage 4 — arbitrate.
@@ -98,6 +143,11 @@ def analyze_email(email_id: str, raw_body: str, headers: str = "",
     if res.forensic:
         flags += [RedFlag(f.claim, f.evidence.excerpt)
                   for f in res.forensic.findings if f.severity == "high"]
+    # Deterministic signals are verified facts — high-severity ones join
+    # the card directly, each citing the artifact it came from.
+    if res.signals:
+        flags += [RedFlag(s.detail, s.evidence)
+                  for s in res.signals.signals if s.severity == "high"]
     if res.vision and res.vision.impersonated_brand:
         flags.append(RedFlag(
             f"Visual impersonation of {res.vision.impersonated_brand}",

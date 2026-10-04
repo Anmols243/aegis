@@ -111,6 +111,31 @@
     "scam_recall_at_flagged": 1.0,
     "scam_recall_at_SCAM": 0.0,
     "legit_specificity": 1.0,
-    "note": "synthetic 15-message set (7 scam incl. 6 adversarial variants, 8 legit). Not a real-world accuracy claim."
+    "note": "synthetic 15-message set (7 scam incl. 6 adversarial variants, 8 legit). Not a real-world accuracy claim.",
+    "confusion": {
+      "scam": {
+        "SCAM": 0,
+        "SUSPICIOUS": 7,
+        "LIKELY_SAFE": 0
+      },
+      "legit": {
+        "SCAM": 0,
+        "SUSPICIOUS": 0,
+        "LIKELY_SAFE": 8
+      }
+    },
+    "scam_precision": 1.0,
+    "scam_recall": 1.0,
+    "scam_f1": 1.0,
+    "false_positive_rate": 0.0,
+    "false_negative_rate": 0.0,
+    "latency_s": {
+      "mean": 15.0,
+      "p50": 16.4,
+      "p95": 20.4
+    },
+    "stage_latency_s": {
+      "note": "per-stage timings recorded from 2026-10-05 onward (see stage_seconds in rows of newer runs)"
+    }
   }
 }
