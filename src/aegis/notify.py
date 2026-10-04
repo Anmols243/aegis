@@ -39,7 +39,12 @@ def reply_to_message(inbox_id: str, message_id: str, text: str) -> dict:
 
 
 def create_draft_reply(inbox_id: str, message_id: str, text: str) -> dict:
-    """POST /v1/inboxes/:id/drafts with reply_to_message_id — needs a human."""
+    """POST /v1/inboxes/:id/drafts with reply_to_message_id — needs a human.
+
+    NOTE: reply drafts are a paid-plan feature (Free includes 0/month —
+    this 402s with plan_limit_drafts on free workspaces). The verdict-reply
+    flow uses reply_to_message(), which works on every plan.
+    """
     with _client() as c:
         r = c.post(
             f"/v1/inboxes/{inbox_id}/drafts",
