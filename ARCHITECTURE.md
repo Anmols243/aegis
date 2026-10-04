@@ -70,13 +70,13 @@ Thresholds: ≥0.7 SCAM, 0.4–0.7 SUSPICIOUS, <0.4 LIKELY SAFE. Missing/errorin
 
 Markdown reply: verdict + confidence bar, red-flag table (flag → evidence excerpt), "what to do next" action plan in plain language, campaign linkage ("part of campaign #7 — 5 related scams seen"). Sent via AgentBoxD `reply_to_email`. High-risk outbound warnings use `create_draft` for human approval instead of auto-send.
 
-### 9. Red-team loop (`src/aegis/agents/redteam.py`)
+### 9. Red-team loop (`src/aegis/agents/redteam.py`, `scripts/redteam_demo.py`)
 
-Offline. Takes analyzed scam emails and prompts a model to generate *mutated variants*: rephrased lure, fresh lookalike domain, different impersonated brand, altered urgency framing — while preserving the malicious intent. Each variant runs through the full pipeline. Variants scored below the SCAM threshold are saved to `tests/regression/` as JSON fixtures with the expected label. The loop is the project's self-improvement story and the demo's climax.
+Offline. A seeded, deterministic mutation engine (no LLM — the LLM mutator refused to emit deployable phish, which is also why a judged demo can't depend on one) rewrites real scam emails along explicit axes: homoglyph brand, fresh lookalike domain, TLD swap, brand-as-subdomain, rephrased urgency, rephrased lure, restructured message. Each variant runs through the full pipeline. Variants that don't reach the SCAM threshold are saved to `tests/regression/` as JSON fixtures with the expected label and the mutation axes that produced them. First run: 5/5 variants landed SUSPICIOUS at 0.69 (forensics ~0.97 on all — a calibration finding, not an evasion). The loop is the project's self-improvement story and the demo's climax.
 
-### 10. Dashboard (Momen)
+### 10. Dashboard (`dashboard/`)
 
-Campaign graph visualization, live verdict feed, red-team regression results. Built on Momen with the $100 credits; falls back to a static export if time runs short.
+Static case-file page built from real run data: verdict stamp, evidence exhibits, per-agent votes, red-team results table. Momen was evaluated for a live campaign dashboard; the static page shipped instead — zero infra, judges can open the file. Screenshot at `dashboard/screenshot.png` for the README/Devpost.
 
 ## Data flow (single email)
 
