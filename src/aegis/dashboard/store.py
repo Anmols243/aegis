@@ -7,8 +7,27 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 from datetime import datetime, timezone
+
+# Set AEGIS_DASHBOARD_REDACT=1 when the dashboard might be seen by people
+# who shouldn't read raw email contents (shared screen, public demo).
+# Masks email addresses and phone-like numbers in sender/preview fields.
+REDACT_PII = os.environ.get("AEGIS_DASHBOARD_REDACT") == "1"
+
+
+def redact_pii(text: str) -> str:
+    """Mask addresses and phone numbers. Best-effort, not a guarantee."""
+    text = re.sub(r"[\w.+-]+@[\w-]+\.[\w.]+", "[email]", text)
+    text = re.sub(r"\+?[\d][\d\s\-().]{6,}\d", "[phone]", text)
+    return text
+
+
+def _maybe_redact(sender: str, preview: str) -> tuple[str, str]:
+    if REDACT_PII:
+        return redact_pii(sender), redact_pii(preview)
+    return sender, preview
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS verdicts (
@@ -23,9 +42,17 @@ CREATE TABLE IF NOT EXISTS verdicts (
     red_flags    TEXT DEFAULT '[]',
     campaign_note TEXT DEFAULT '',
     signals      TEXT DEFAULT '{}',
-    body_preview TEXT DEFAULT ''
+    body_preview TEXT DEFAULT '',
+    det_signals  TEXT DEFAULT '[]',
+    timings      TEXT DEFAULT '{}'
 );
 """
+
+# Migrations for DBs created before a column existed.
+_MIGRATIONS = [
+    "ALTER TABLE verdicts ADD COLUMN det_signals TEXT DEFAULT '[]'",
+    "ALTER TABLE verdicts ADD COLUMN timings TEXT DEFAULT '{}'",
+]
 
 
 def _connect(path: str = "data/dashboard.db") -> sqlite3.Connection:
@@ -33,6 +60,11 @@ def _connect(path: str = "data/dashboard.db") -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute(SCHEMA)
+    for stmt in _MIGRATIONS:
+        try:
+            conn.execute(stmt)
+        except sqlite3.OperationalError:
+            pass  # column already exists
     return conn
 
 
@@ -52,14 +84,23 @@ def record(res, body: str = "", path: str = "data/dashboard.db") -> None:
         "sandbox": round(max((s.risk for s in sandbox), default=0), 3) or None,
         "vision": round(res.vision.risk, 3) if res.vision else None,
     }
+    det_signals = []
+    sig_report = getattr(res, "signals", None)
+    if sig_report is not None:
+        det_signals = [{"name": s.name, "severity": s.severity,
+                        "detail": s.detail, "evidence": s.evidence}
+                       for s in sig_report.signals]
+    timings = getattr(res, "stage_timings", None) or {}
+    sender, preview = _maybe_redact(
+        (triage.sender if triage else "")[:200], (body or "")[:400])
     conn = _connect(path)
     try:
         conn.execute(
             """INSERT INTO verdicts
                (email_id, received_at, sender, label, confidence, score,
                 contributions, dissent, red_flags, campaign_note, signals,
-                body_preview)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                body_preview, det_signals, timings)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(email_id) DO UPDATE SET
                  received_at=excluded.received_at, sender=excluded.sender,
                  label=excluded.label, confidence=excluded.confidence,
@@ -67,10 +108,12 @@ def record(res, body: str = "", path: str = "data/dashboard.db") -> None:
                  dissent=excluded.dissent, red_flags=excluded.red_flags,
                  campaign_note=excluded.campaign_note,
                  signals=excluded.signals,
-                 body_preview=excluded.body_preview""",
+                 body_preview=excluded.body_preview,
+                 det_signals=excluded.det_signals,
+                 timings=excluded.timings""",
             (res.email_id,
              datetime.now(timezone.utc).isoformat(),
-             (triage.sender if triage else "")[:200],
+             sender,
              v.label.value if v else "",
              round(v.confidence, 2) if v else 0,
              round(v.score, 3) if v else 0,
@@ -79,7 +122,10 @@ def record(res, body: str = "", path: str = "data/dashboard.db") -> None:
              json.dumps(flags),
              res.campaign_note or "",
              json.dumps(signals),
-             (body or "")[:400]),
+             preview,
+             json.dumps(det_signals),
+             json.dumps(timings),
+             ),
         )
         conn.commit()
     finally:

@@ -101,12 +101,17 @@ campaign table, red-team board. Polls every 5s. The static case file
 
 ## Current status (Oct 5)
 
-- Full pipeline implemented; offline suite green: `python -m unittest tests.test_offline` — **15/15 pass**.
+- Full pipeline implemented; offline suite green: `python -m unittest tests.test_offline` — **77/77 pass** (incl. 40+ security regression tests).
+- Security-hardening pass (Oct 5): vision renderer default-deny egress isolation; webhook idempotency (redelivery never re-analyzes/re-replies); prompt-injection hardening on every LLM stage (`<UNTRUSTED_EMAIL>` delimiters); strict model-output validation with evidence-grounding (fabricated quotes dropped); sandbox SSRF deny-list extended (IPv6 link-local) + honest DNS-TOCTOU documentation.
+- Deterministic security-signal layer (13 checks, zero LLM): SPF/DKIM/DMARC, From/Reply-To mismatch, display-name spoofing, URL display-vs-href mismatch, punycode/homoglyphs, IP-literal URLs, shorteners, suspicious TLDs, attachment static triage, suspicious phones. Fed to forensic as verified facts; surfaced on the verdict card and dashboard.
+- Fan-out is now genuinely parallel (threads) with per-stage timings; sandbox reports redirect chains, form/download detection, durations; arbiter exposes strongest signals, agreement, and evidence completeness (score math frozen — documented 0.75 holds).
+- Red team expanded: URL display-mismatch, sender-spoof, and **prompt-injection** mutation axes; `regression_summary()` (fixtures/caught/missed/fixed/open).
 - Live runs on Featherless (vault-backed skill, no keys in repo): triage + forensic on `moonshotai/Kimi-K3`, vision on `Qwen/Qwen3-VL-30B-A3B-Instruct`. Sample PayPal phish → **SCAM** on the production path (score 0.75, forensic 0.97, AgentBoxD 0.92, sandbox 0.30 — domain unresolvable); SUSPICIOUS at 0.69 standalone.
 - Live AgentBoxD inbox created; outbound reply path verified end-to-end against the API.
 - Red-team engine: 5-variant demo run banked 5 regression fixtures (`tests/regression/rt-20261004-*.json`); run it yourself with `python scripts/redteam_demo.py`.
-- Dashboard: [`dashboard/index.html`](dashboard/index.html) — static case file of the live run.
-- Synthetic eval (`eval/EVAL.md`, n=15): **100% of scams flagged, 100% of legit mail cleared, zero false positives.** Scam recall@SCAM is 0% without provider enrichment — the ensemble is deliberately conservative; with the AgentBoxD signal the same sample scores 0.75 → SCAM.
+- Dashboards: live at `:8001` (verdict feed + deterministic signals + stage timings + next actions + campaigns + red-team board; optional token auth and PII redaction) and [`dashboard/index.html`](dashboard/index.html) — static case file of the live run.
+- Deterministic demo mode: `python scripts/demo.py --mode deterministic` replays captured real artifacts with zero LLM calls (beats 1 & 3).
+- Synthetic eval (`eval/EVAL.md`, n=15): **100% of scams flagged, 100% of legit mail cleared, zero false positives** (P/R/F1 = 1.00/1.00/1.00); latency mean/p50/p95 = 15.0/16.4/20.4s; ablation flags `--no-signals/--no-sandbox/--no-vision`. Scam recall@SCAM is 0% without provider enrichment — the ensemble is deliberately conservative; with the AgentBoxD signal the same sample scores 0.75 → SCAM.
 - Still open: end-to-end test with a real forwarded email, demo video, Devpost submission (locks Oct 10, 12:00 PM ET).
 
 ## What was built with AI (honesty note, per hackathon rules)

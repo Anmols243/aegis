@@ -1,5 +1,10 @@
 """AEGIS one-command narrative demo — the video shot list as runnable beats.
 
+MODES:
+  live          — real pipeline, real LLM calls (default)
+  deterministic — replays captured real artifacts from demo/artifacts/
+                  (zero LLM calls, guaranteed reproducible)
+
 Beats:
   1 — live verdict: sample phish through the full pipeline, verdict card
   2 — threat graph: seed the parcel campaign, show a new inbound joining it
@@ -7,7 +12,8 @@ Beats:
   4 — eval: synthetic 15-message corpus results (reads eval/results.json,
       runs the eval first if missing)
 
-Usage: python scripts/demo.py [--beat 1|2|3|4] [--all]
+Usage:
+  python scripts/demo.py [--beat 1|2|3|4] [--all] [--mode live|deterministic]
 """
 from __future__ import annotations
 
@@ -101,19 +107,93 @@ def beat4() -> None:
     print(f"  scam recall@flagged : {s['scam_recall_at_flagged']:.0%}")
     print(f"  scam recall@SCAM    : {s['scam_recall_at_SCAM']:.0%}")
     print(f"  legit specificity   : {s['legit_specificity']:.0%}")
+    if "scam_f1" in s:
+        print(f"  precision/recall/F1 : {s['scam_precision']:.0%} / "
+              f"{s['scam_recall']:.0%} / {s['scam_f1']:.0%}")
+    if "latency_s" in s:
+        l = s["latency_s"]
+        print(f"  latency mean/p50/p95: {l['mean']}s / {l['p50']}s / {l['p95']}s")
+
+
+ART_DIR = os.path.join(os.path.dirname(__file__), "..", "demo", "artifacts")
+
+
+def _load_artifact(name: str) -> dict:
+    path = os.path.join(ART_DIR, name)
+    if not os.path.exists(path):
+        print(f"[demo] missing artifact {path} — run "
+              f"scripts/capture_demo_artifacts.py first")
+        sys.exit(2)
+    return json.load(open(path))
+
+
+def beat1_deterministic() -> None:
+    """Replay the captured scam analysis, stage by stage. No LLM calls."""
+    banner("BEAT 1 (deterministic replay) — a scam arrives, dissected")
+    a = _load_artifact("scam-analysis.json")
+    print(f"\n[1. triage] sender: {a['triage'].get('sender')}")
+    print(f"    urls: {a['triage'].get('urls')}")
+    print(f"    brands: {a['triage'].get('brand_mentions')}")
+    print("\n[2. deterministic signals] verified facts, zero LLM:")
+    if a["signals"]:
+        for s in a["signals"][:6]:
+            print(f"    [{s['severity']}] {s['name']}: {s['detail']}")
+    else:
+        print("    (none fired — this sample carries no headers; signals fire "
+              "on From/Reply-To/auth/URL mismatches in real mail)")
+    print("\n[3. forensic] evidence-cited findings:")
+    for f in a["forensic"]["findings"][:4]:
+        print(f"    - [{f['severity']}] {f['claim']}")
+        print(f"      evidence: \"{f['evidence']['excerpt'][:80]}\"")
+    print(f"    risk_score: {a['forensic']['risk_score']}")
+    print("\n[4. sandbox] URL investigation:")
+    for s in a["sandbox"]:
+        print(f"    {s['url'][:60]} -> {s['kind']} "
+              f"(status={s.get('status_code')}, "
+              f"{s.get('fetch_duration_s')}s)")
+    print(f"\n[5. campaign] {a['campaign_note'] or '(no campaign linkage)'}")
+    v = a["verdict"]
+    print(f"\n[6. arbiter] verdict: {v['label']}  score {v['score']:.2f}  "
+          f"confidence {v['confidence']:.0%}")
+    print(f"    agreement: {v.get('agreement')} · strongest: "
+          f"{', '.join(v.get('strongest', []))}")
+    if v.get("dissent"):
+        print(f"    dissent: {'; '.join(v['dissent'])}")
+    print("\n[7. verdict card]")
+    print(a["card_markdown"][:800])
+
+
+def beat3_deterministic() -> None:
+    """Replay the captured red-team mutations. No LLM calls."""
+    banner("BEAT 3 (deterministic replay) — the red team attacks")
+    m = _load_artifact("redteam-mutations.json")
+    print(f"engine generated {len(m['variants'])} adversarial variants "
+          f"(seed {m['seed']}, reproducible)\n")
+    for i, var in enumerate(m["variants"], 1):
+        print(f"  variant {i}: [{', '.join(var['axes'])}]")
+    print("\nEach miss becomes a permanent regression fixture in "
+          "tests/regression/ — the pipeline's immune system.")
 
 
 BEATS = {"1": beat1, "2": beat2, "3": beat3, "4": beat4}
+BEATS_DET = {"1": beat1_deterministic, "3": beat3_deterministic}
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--beat", choices=list(BEATS))
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--mode", choices=["live", "deterministic"],
+                    default="live")
     args = ap.parse_args()
     beats = list(BEATS) if args.all or not args.beat else [args.beat]
+    table = BEATS_DET if args.mode == "deterministic" else BEATS
     for b in beats:
-        BEATS[b]()
+        fn = table.get(b, BEATS[b])  # beats 2/4 have no replay variant
+        if args.mode == "deterministic" and b not in BEATS_DET:
+            print(f"\n[demo] beat {b} has no deterministic variant — "
+                  f"running live")
+        fn()
     print("\n[demos] done.")
     return 0
 
