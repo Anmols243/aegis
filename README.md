@@ -82,6 +82,10 @@ uvicorn aegis.ingress.webhook:app --port 8000
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design and [BUILD_PLAN.md](BUILD_PLAN.md) for the day-by-day plan.
 
+## Current status (Oct 4)
+
+The full pipeline is implemented and offline-tested (`python -m unittest tests.test_offline` — 14 pass, 1 skipped pending Chromium download). Live end-to-end (forward email → verdict reply) needs the sponsor API keys in `.env` — see Day 0 checklist in BUILD_PLAN.md.
+
 ## What was built with AI (honesty note, per hackathon rules)
 
 Built during the ForgeHacks window (Oct 3–10, 2026) with AI coding assistance (Claude Code / Muse). AgentBoxD, Featherless, n8n, Momen, and YouCam are third-party sponsor APIs used as infrastructure. All agent prompts, pipeline logic, threat-graph code, and evaluation are original to this project.

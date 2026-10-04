@@ -2,6 +2,19 @@
 
 Submission locks **Saturday Oct 10, 12:00 PM ET**. Work backwards from that. One phase = one goal; commit locally at each phase boundary.
 
+## Build status — Oct 4 (evening)
+
+All pipeline code is **implemented and offline-tested** (15 unit tests, 14 pass,
+1 skipped pending Chromium download):
+- ✅ triage, forensic analyst, arbiter, threat graph, verdict card, webhook
+  receiver (HMAC), AgentBoxD reply/draft client, link sandbox (+SSRF guards),
+  vision inspector (render path; LLM call needs `MODEL_VISION`), red-team
+  mutate + regression harness, orchestrator wiring, n8n workflow, demo script.
+- ⏳ **Live testing needs keys**: `FEATHERLESS_API_KEY`, `AGENTBOXD_API_KEY`,
+  `AGENTBOXD_WEBHOOK_SECRET`, `MODEL_TRIAGE`, `MODEL_VISION` → then run
+  `scripts/smoke_llm.py`, forward a real email, watch the verdict reply land.
+- ⏳ Momen dashboard, demo video recording, Devpost submission.
+
 ## Day 0 — Today (Oct 4, remaining)
 
 - [ ] Redeem sponsor codes (first-come-first-served): AgentBoxD (800), YouCam (1000), n8n (300), Kariaa (1000)

@@ -23,13 +23,14 @@ def chat(model: str, messages: list[dict], **kwargs) -> str:
     return resp.choices[0].message.content or ""
 
 
-def chat_json(model: str, messages: list[dict], **kwargs) -> dict:
+def chat_json(model: str, messages: list[dict], temperature: float = 0.0,
+              **kwargs) -> dict:
     """Chat completion forced into a JSON object. Raises on invalid JSON."""
     text = chat(
         model,
         messages,
         response_format={"type": "json_object"},
-        temperature=0.0,
+        temperature=temperature,
         **kwargs,
     )
     try:

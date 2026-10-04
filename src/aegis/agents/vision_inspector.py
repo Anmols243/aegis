@@ -1,20 +1,20 @@
 """Vision inspector: render email HTML → screenshot → brand-impersonation check.
 
-CONTRACT (Phase 3):
-  inspect(html: str) -> VisionVerdict
-
 Catches what text analysis misses: pixel-faithful clones of bank / PayPal /
 corporate login pages hosted on lookalike domains.
 
-Implementation notes:
-- Playwright headless Chromium, viewport 1280x900, screenshot full page.
-- Feed the PNG (base64) to MODEL_VISION with the prompt below.
-- Never render with JS enabled on untrusted HTML if avoidable; screenshots
-  of static render are enough for brand-impersonation detection.
+Safety: Chromium runs with JavaScript DISABLED — the screenshot is a static
+render, which is all brand-impersonation detection needs.
 """
 from __future__ import annotations
 
+import base64
+import os
+import tempfile
 from dataclasses import dataclass, field
+
+from ..config import get_settings
+from ..llm import chat_json
 
 VISION_PROMPT = """You are AEGIS-Vision, a brand-impersonation detector.
 This is a screenshot of an email's rendered HTML.
@@ -46,6 +46,54 @@ class VisionVerdict:
         return self.confidence if self.impersonated_brand else 0.0
 
 
+def render_html(html: str, out_path: str | None = None) -> str:
+    """Static render of untrusted HTML → PNG screenshot. No JavaScript."""
+    from playwright.sync_api import sync_playwright
+
+    path = out_path or tempfile.mktemp(suffix=".png")
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        ctx = browser.new_context(
+            java_script_enabled=False,
+            viewport={"width": 1280, "height": 900},
+        )
+        page = ctx.new_page()
+        page.set_content(html, wait_until="domcontentloaded")
+        page.screenshot(path=path, full_page=True)
+        browser.close()
+    return path
+
+
 def inspect(html: str) -> VisionVerdict:
-    """Phase 3: Playwright render → screenshot → MODEL_VISION."""
-    raise NotImplementedError("Phase 3 — see BUILD_PLAN.md")
+    """Full pipeline: render → vision model → structured verdict."""
+    shot = render_html(html)
+    with open(shot, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode()
+    model = get_settings().model_vision
+    data = chat_json(
+        model,
+        [
+            {"role": "system", "content": VISION_PROMPT},
+            {"role": "user", "content": [
+                {"type": "text", "text": "Screenshot of the rendered email:"},
+                {"type": "image_url",
+                 "image_url": {"url": f"data:image/png;base64,{b64}"}},
+            ]},
+        ],
+    )
+    return VisionVerdict(
+        impersonated_brand=data.get("impersonated_brand"),
+        confidence=float(data.get("confidence", 0.0)),
+        notable_regions=data.get("notable_regions", []),
+        reason=data.get("reason", ""),
+        screenshot_path=shot,
+    )
+
+
+if __name__ == "__main__":  # quick manual check: render only, no LLM
+    sample = ("<html><body style='font-family:sans-serif'>"
+              "<h1 style='color:#003087'>PayPal</h1>"
+              "<p>Verify your account:</p>"
+              "<form><input type='password' placeholder='Password'></form>"
+              "</body></html>")
+    print("screenshot:", render_html(sample, "/tmp/aegis_vision_sample.png"))
