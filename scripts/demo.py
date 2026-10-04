@@ -31,11 +31,9 @@ def banner(title: str) -> None:
     print("=" * 64)
 
 
-def beat1() -> None:
-    banner("BEAT 1 — a scam arrives, the agents dissect it")
-    res = analyze_email("demo-phish-001", SAMPLE_PHISH_BODY)
+def _print_beat1(res, tag: str) -> None:
     v = res.verdict
-    print(f"verdict: {v.label.value}  confidence {v.confidence:.0%}  "
+    print(f"[{tag}] verdict: {v.label.value}  confidence {v.confidence:.0%}  "
           f"score {v.score:.2f}")
     if res.forensic:
         print(f"forensic risk: {res.forensic.risk_score:.2f}")
@@ -43,8 +41,18 @@ def beat1() -> None:
             print(f"  - [{f.severity}] {f.claim}")
     if v.dissent:
         print("dissent:", "; ".join(v.dissent))
+
+
+def beat1() -> None:
+    banner("BEAT 1 — a scam arrives, the agents dissect it")
+    res = analyze_email("demo-phish-001", SAMPLE_PHISH_BODY)
+    _print_beat1(res, "standalone")
+    print("\n--- with the AgentBoxD phishing signal (production path) ---")
+    res2 = analyze_email("demo-phish-001-prod", SAMPLE_PHISH_BODY,
+                         agentboxd_scores={"phishing": 0.92})
+    _print_beat1(res2, "production")
     print("\nverdict card preview:")
-    print((res.card_markdown or "")[:600])
+    print((res2.card_markdown or "")[:600])
 
 
 def beat2() -> None:

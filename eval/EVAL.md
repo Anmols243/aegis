@@ -43,10 +43,10 @@ but the sandbox marks unresolvable domains 0.3 and the weights can't clear
 the 0.70 SCAM line — so everything lands SUSPICIOUS at ~0.69.
 
 With the AgentBoxD phishing signal present (the production path), the same
-sample scores **0.93 → SCAM**. The SCAM label is effectively reserved for
-provider-corroborated cases. That's a calibration choice, not an evasion:
-the system would rather say "suspicious, verify" than cry scam — and it
-never clears actual scams as safe.
+sample scores **0.75 → SCAM** at 41% confidence — just over the line. The
+SCAM label is effectively reserved for provider-corroborated cases. That's a
+calibration choice, not an evasion: the system would rather say "suspicious,
+verify" than cry scam — and it never clears actual scams as safe.
 
 ## Reproduce
 

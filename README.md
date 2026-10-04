@@ -89,11 +89,11 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design and [BUILD_PLAN.md](B
 ## Current status (Oct 5)
 
 - Full pipeline implemented; offline suite green: `python -m unittest tests.test_offline` — **15/15 pass**.
-- Live runs on Featherless (vault-backed skill, no keys in repo): triage + forensic on `moonshotai/Kimi-K3`, vision on `Qwen/Qwen3-VL-30B-A3B-Instruct`. Sample PayPal phish → **SCAM at 93%** (forensic 0.98, AgentBoxD 0.92, sandbox 1.0).
+- Live runs on Featherless (vault-backed skill, no keys in repo): triage + forensic on `moonshotai/Kimi-K3`, vision on `Qwen/Qwen3-VL-30B-A3B-Instruct`. Sample PayPal phish → **SCAM** on the production path (score 0.75, forensic 0.97, AgentBoxD 0.92, sandbox 0.30 — domain unresolvable); SUSPICIOUS at 0.69 standalone.
 - Live AgentBoxD inbox created; outbound reply path verified end-to-end against the API.
 - Red-team engine: 5-variant demo run banked 5 regression fixtures (`tests/regression/rt-20261004-*.json`); run it yourself with `python scripts/redteam_demo.py`.
 - Dashboard: [`dashboard/index.html`](dashboard/index.html) — static case file of the live run.
-- Synthetic eval (`eval/EVAL.md`, n=15): **100% of scams flagged, 100% of legit mail cleared, zero false positives.** Scam recall@SCAM is 0% without provider enrichment — the ensemble is deliberately conservative; with the AgentBoxD signal the same sample scores 0.93 → SCAM.
+- Synthetic eval (`eval/EVAL.md`, n=15): **100% of scams flagged, 100% of legit mail cleared, zero false positives.** Scam recall@SCAM is 0% without provider enrichment — the ensemble is deliberately conservative; with the AgentBoxD signal the same sample scores 0.75 → SCAM.
 - Still open: end-to-end test with a real forwarded email, demo video, Devpost submission (locks Oct 10, 12:00 PM ET).
 
 ## What was built with AI (honesty note, per hackathon rules)

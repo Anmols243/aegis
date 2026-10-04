@@ -108,7 +108,7 @@
   }
   .meter i{
     position:absolute;left:0;top:0;bottom:0;
-    width:93%;
+    width:75%;
     background:var(--scam);
   }
   .meter .tick{
@@ -238,14 +238,15 @@
   <div class="verdict-block">
     <div class="stamp">SCAM</div>
     <div class="verdict-data">
-      <div class="score-line"><b>93%</b> confidence · ensemble score 0.93</div>
-      <div class="meter" role="img" aria-label="Ensemble score 0.93, scam threshold 0.70">
+      <div class="score-line"><b>41%</b> confidence · ensemble score 0.75</div>
+      <div class="meter" role="img" aria-label="Ensemble score 0.75, scam threshold 0.70">
         <i></i><span class="tick"></span>
       </div>
       <div class="meter-labels"><span>0 · likely safe</span><span>scam line 0.70</span><span>1.0</span></div>
       <p style="font-size:14px;color:var(--ink-soft);max-width:52ch">
-        Four independent signals agreed. The dissent log is empty —
-        when agents disagree by more than 0.5, the verdict card says so.
+        Just over the scam line — and the verdict says so. The dissent log
+        records the disagreement: forensic scored 0.97, the sandbox could not
+        resolve the domain and scored 0.30. No black boxes.
       </p>
     </div>
   </div>
@@ -269,8 +270,9 @@
       <h3>Credential-harvesting URL</h3>
       <p><code>http://paypa1-secure.com/verify?session=8f3k2</code> — plain HTTP,
       a lookalike host, and a <code>/verify</code> path built to collect logins.
-      The sandbox fetched it with JavaScript disabled and flagged the
-      password field.</p>
+      The sandbox could not resolve the domain, so it scored the link as
+      unreachable rather than safe — the verdict does not treat "couldn't
+      load" as "clean".</p>
     </div>
   </div>
 
@@ -298,13 +300,13 @@
     <div class="stage-num">02</div>
     <div class="stage-name">Forensic analyst</div>
     <div class="stage-desc">Read the full text against brand-impersonation and social-engineering patterns.</div>
-    <div class="stage-signal hot">risk 0.98</div>
+    <div class="stage-signal hot">risk 0.97</div>
   </div>
   <div class="stage">
     <div class="stage-num">03</div>
     <div class="stage-name">Link sandbox</div>
-    <div class="stage-desc">Fetched the URL with no JavaScript, SSRF guards on, and inspected the page.</div>
-    <div class="stage-signal hot">risk 1.00</div>
+    <div class="stage-desc">Fetched the URL with no JavaScript, SSRF guards on. Domain unresolvable — scored as unreachable, not as safe.</div>
+    <div class="stage-signal">risk 0.30</div>
   </div>
   <div class="stage">
     <div class="stage-num">04</div>
@@ -322,7 +324,7 @@
     <div class="stage-num">06</div>
     <div class="stage-name">Arbiter</div>
     <div class="stage-desc">Weighted ensemble (forensic 0.35 · sandbox 0.25 · agentboxd 0.20 · vision 0.20). Fail-closed: missing signals are dropped, weights renormalized.</div>
-    <div class="stage-signal hot">0.93 → SCAM</div>
+    <div class="stage-signal hot">0.75 → SCAM</div>
   </div>
 
   <h2>Red team</h2>

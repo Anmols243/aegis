@@ -22,7 +22,11 @@ dissect it, the red team attacks, the system learns.
   - **Threat graph**: campaign view — a parcel-scam inbound links to 3 seeded
     earlier scams sharing the sender domain and callback phone
     (run `scripts/seed_campaign.py` first).
-- Verdict card reply lands in the inbox: 🛑 SCAM, confidence bar, red flags,
+- Verdict card reply lands in the inbox: 🛑 SCAM (score 0.75, 41% confidence)
+  on the production path (with the AgentBoxD phishing signal); SUSPICIOUS at
+  0.69 standalone — the pipeline is deliberately conservative without
+  provider corroboration. Show the dissent line:
+  "agents disagree: forensic=0.97 vs sandbox=0.30". Confidence bar, red flags,
   action plan.
 
 ## 1:30–2:20 — The red team attacks

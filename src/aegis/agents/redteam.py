@@ -242,6 +242,10 @@ def run_regression(corpus_dir: str = "tests/regression",
             text, axes = variant.text, variant.axes
         else:
             text, axes = variant, []
+        # Dedup: the engine is seeded, so re-runs produce identical texts.
+        # Don't bank (or re-analyze) a variant the corpus already has.
+        if any(c.variant == text for c in cases):
+            continue
         case_id = _new_case_id(corpus_dir)
         res = analyze_email(case_id, text)
         case = RegressionCase(
