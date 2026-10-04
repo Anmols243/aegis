@@ -1,0 +1,116 @@
+{
+  "rows": [
+    {
+      "id": "scam-paypal-orig",
+      "expected": "scam",
+      "predicted": "SUSPICIOUS",
+      "score": 0.691,
+      "seconds": 14.2
+    },
+    {
+      "id": "scam-paypal-var02",
+      "expected": "scam",
+      "predicted": "SUSPICIOUS",
+      "score": 0.691,
+      "seconds": 9.9
+    },
+    {
+      "id": "scam-paypal-var03",
+      "expected": "scam",
+      "predicted": "SUSPICIOUS",
+      "score": 0.691,
+      "seconds": 20.1
+    },
+    {
+      "id": "scam-paypal-var04",
+      "expected": "scam",
+      "predicted": "SUSPICIOUS",
+      "score": 0.691,
+      "seconds": 20.8
+    },
+    {
+      "id": "scam-paypal-var05",
+      "expected": "scam",
+      "predicted": "SUSPICIOUS",
+      "score": 0.697,
+      "seconds": 18.2
+    },
+    {
+      "id": "scam-paypal-var06",
+      "expected": "scam",
+      "predicted": "SUSPICIOUS",
+      "score": 0.691,
+      "seconds": 19.2
+    },
+    {
+      "id": "scam-paypal-var07",
+      "expected": "scam",
+      "predicted": "SUSPICIOUS",
+      "score": 0.691,
+      "seconds": 16.4
+    },
+    {
+      "id": "legit-order",
+      "expected": "legit",
+      "predicted": "LIKELY_SAFE",
+      "score": 0.154,
+      "seconds": 10.9
+    },
+    {
+      "id": "legit-newsletter",
+      "expected": "legit",
+      "predicted": "LIKELY_SAFE",
+      "score": 0.137,
+      "seconds": 8.3
+    },
+    {
+      "id": "legit-bank-alert",
+      "expected": "legit",
+      "predicted": "LIKELY_SAFE",
+      "score": 0.183,
+      "seconds": 20.2
+    },
+    {
+      "id": "legit-meeting",
+      "expected": "legit",
+      "predicted": "LIKELY_SAFE",
+      "score": 0.02,
+      "seconds": 10.6
+    },
+    {
+      "id": "legit-flight",
+      "expected": "legit",
+      "predicted": "LIKELY_SAFE",
+      "score": 0.172,
+      "seconds": 20.3
+    },
+    {
+      "id": "legit-interview",
+      "expected": "legit",
+      "predicted": "LIKELY_SAFE",
+      "score": 0.05,
+      "seconds": 10.2
+    },
+    {
+      "id": "legit-bill",
+      "expected": "legit",
+      "predicted": "LIKELY_SAFE",
+      "score": 0.358,
+      "seconds": 18.3
+    },
+    {
+      "id": "legit-personal",
+      "expected": "legit",
+      "predicted": "LIKELY_SAFE",
+      "score": 0.02,
+      "seconds": 6.9
+    }
+  ],
+  "summary": {
+    "n": 15,
+    "scam_recall_at_flagged": 1.0,
+    "scam_recall_at_SCAM": 0.0,
+    "legit_specificity": 1.0,
+    "note": "synthetic 15-message set (7 scam incl. 6 adversarial variants, 8 legit). Not a real-world accuracy claim."
+  }
+}

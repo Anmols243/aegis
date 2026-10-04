@@ -1,0 +1,101 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" xmlns="http://www.w3.org/2000/svg"
+     font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#1b1e1b"/>
+    </marker>
+    <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#b3271e"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="760" fill="#e9eae3"/>
+  <text x="40" y="52" font-size="30" font-weight="800" letter-spacing="-0.02em" fill="#1b1e1b">AEGIS — how it works</text>
+  <text x="40" y="80" font-size="15" fill="#4a4e48">multi-agent adversarial scam defense · every verdict cites its evidence</text>
+
+  <!-- row 1 -->
+  <g font-size="15" font-weight="650" fill="#1b1e1b">
+    <rect x="120" y="110" width="200" height="62" fill="#f2f1e9" stroke="#1b1e1b" stroke-width="1.5"/>
+    <text x="220" y="136" text-anchor="middle">Suspicious email</text>
+    <text x="220" y="156" text-anchor="middle" font-size="12" font-weight="400" fill="#7c8078">forwarded by the user</text>
+
+    <rect x="400" y="110" width="200" height="62" fill="#f2f1e9" stroke="#1b1e1b" stroke-width="1.5"/>
+    <text x="500" y="136" text-anchor="middle">AgentBoxD inbox</text>
+    <text x="500" y="156" text-anchor="middle" font-size="12" font-weight="400" fill="#7c8078">real inbox · AI phishing scores</text>
+
+    <rect x="680" y="110" width="200" height="62" fill="#f2f1e9" stroke="#1b1e1b" stroke-width="1.5"/>
+    <text x="780" y="136" text-anchor="middle">FastAPI webhook</text>
+    <text x="780" y="156" text-anchor="middle" font-size="12" font-weight="400" fill="#7c8078">HMAC-SHA256 verified</text>
+  </g>
+  <line x1="320" y1="141" x2="392" y2="141" stroke="#1b1e1b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="600" y1="141" x2="672" y2="141" stroke="#1b1e1b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- orchestrator -->
+  <line x1="500" y1="172" x2="500" y2="232" stroke="#1b1e1b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="400" y="240" width="200" height="56" fill="#1b1e1b"/>
+  <text x="500" y="266" text-anchor="middle" font-size="15" font-weight="700" fill="#f2f1e9">Orchestrator</text>
+  <text x="500" y="284" text-anchor="middle" font-size="12" fill="#a9aca0">fans out · collects · arbitrates</text>
+
+  <!-- fan-out bus -->
+  <line x1="500" y1="296" x2="500" y2="338" stroke="#1b1e1b" stroke-width="1.5"/>
+  <line x1="180" y1="338" x2="900" y2="338" stroke="#1b1e1b" stroke-width="1.5"/>
+  <g stroke="#1b1e1b" stroke-width="1.5">
+    <line x1="180" y1="338" x2="180" y2="352"/>
+    <line x1="420" y1="338" x2="420" y2="352"/>
+    <line x1="660" y1="338" x2="660" y2="352"/>
+    <line x1="900" y1="338" x2="900" y2="352"/>
+  </g>
+
+  <!-- row 3: agents -->
+  <g font-size="14" font-weight="650" fill="#1b1e1b">
+    <rect x="90" y="360" width="180" height="66" fill="#f2f1e9" stroke="#1b1e1b" stroke-width="1.5"/>
+    <text x="180" y="386" text-anchor="middle">Triage</text>
+    <text x="180" y="406" text-anchor="middle" font-size="11.5" font-weight="400" fill="#7c8078">entities · urls · urgency</text>
+
+    <rect x="330" y="360" width="180" height="66" fill="#f2f1e9" stroke="#1b1e1b" stroke-width="1.5"/>
+    <text x="420" y="386" text-anchor="middle">Forensic analyst</text>
+    <text x="420" y="406" text-anchor="middle" font-size="11.5" font-weight="400" fill="#7c8078">Kimi-K3 · risk 0–1</text>
+
+    <rect x="570" y="360" width="180" height="66" fill="#f2f1e9" stroke="#1b1e1b" stroke-width="1.5"/>
+    <text x="660" y="386" text-anchor="middle">Vision inspector</text>
+    <text x="660" y="406" text-anchor="middle" font-size="11.5" font-weight="400" fill="#7c8078">Qwen3-VL · brand spoofing</text>
+
+    <rect x="810" y="360" width="180" height="66" fill="#f2f1e9" stroke="#1b1e1b" stroke-width="1.5"/>
+    <text x="900" y="386" text-anchor="middle">Link sandbox</text>
+    <text x="900" y="406" text-anchor="middle" font-size="11.5" font-weight="400" fill="#7c8078">no JS · SSRF guards</text>
+  </g>
+
+  <!-- row3 -> row4 bus -->
+  <line x1="540" y1="426" x2="540" y2="452" stroke="#1b1e1b" stroke-width="1.5"/>
+  <line x1="440" y1="452" x2="720" y2="452" stroke="#1b1e1b" stroke-width="1.5"/>
+  <line x1="440" y1="452" x2="440" y2="472" stroke="#1b1e1b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="720" y1="452" x2="720" y2="472" stroke="#1b1e1b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- row 4 -->
+  <g font-size="14" font-weight="650" fill="#1b1e1b">
+    <rect x="330" y="480" width="220" height="58" fill="#f2f1e9" stroke="#1b1e1b" stroke-width="1.5"/>
+    <text x="440" y="504" text-anchor="middle">Threat-intel graph</text>
+    <text x="440" y="523" text-anchor="middle" font-size="11.5" font-weight="400" fill="#7c8078">campaign clustering</text>
+
+    <rect x="610" y="480" width="220" height="58" fill="#f2f1e9" stroke="#1b1e1b" stroke-width="1.5"/>
+    <text x="720" y="504" text-anchor="middle">Arbiter</text>
+    <text x="720" y="523" text-anchor="middle" font-size="11.5" font-weight="400" fill="#7c8078">weighted ensemble · fail-closed</text>
+  </g>
+  <line x1="550" y1="509" x2="602" y2="509" stroke="#1b1e1b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- row 5: verdict -->
+  <line x1="720" y1="538" x2="720" y2="572" stroke="#1b1e1b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="610" y="580" width="220" height="62" fill="#f2f1e9" stroke="#b3271e" stroke-width="4"/>
+  <text x="720" y="606" text-anchor="middle" font-size="15" font-weight="800" fill="#b3271e">Verdict card</text>
+  <text x="720" y="626" text-anchor="middle" font-size="11.5" font-weight="400" fill="#7c8078">SCAM / SUSPICIOUS / SAFE + evidence</text>
+  <line x1="830" y1="611" x2="862" y2="611" stroke="#b3271e" stroke-width="2" marker-end="url(#arrR)"/>
+  <rect x="870" y="580" width="200" height="62" fill="#f2f1e9" stroke="#1b1e1b" stroke-width="1.5"/>
+  <text x="970" y="606" text-anchor="middle" font-size="14" font-weight="650" fill="#1b1e1b">Reply in thread</text>
+  <text x="970" y="626" text-anchor="middle" font-size="11.5" fill="#7c8078">via AgentBoxD</text>
+
+  <!-- red-team loop -->
+  <rect x="90" y="676" width="1020" height="52" fill="none" stroke="#1b1e1b" stroke-width="1.5" stroke-dasharray="8 5"/>
+  <text x="110" y="708" font-size="14" fill="#1b1e1b"><tspan font-weight="700">Offline red-team loop:</tspan> deterministic mutation engine → pipeline → misses banked as regression tests in <tspan font-family="ui-monospace,Menlo,Consolas,monospace" font-size="13">tests/regression/</tspan></text>
+
+  <text x="40" y="748" font-size="12" fill="#7c8078">AEGIS · ForgeHacks 2026 · AI + Cybersecurity · github.com/Anmols243/aegis</text>
+</svg>

@@ -59,6 +59,8 @@ Phishing remains the #1 way people get compromised, and AI-generated lures are n
 
 Every verdict cites its evidence: header lines, URLs, phrases, screenshots. No black boxes.
 
+![AEGIS architecture](docs/architecture.svg)
+
 ## Sponsor resources used
 
 | Resource | Role in AEGIS |
@@ -91,6 +93,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design and [BUILD_PLAN.md](B
 - Live AgentBoxD inbox created; outbound reply path verified end-to-end against the API.
 - Red-team engine: 5-variant demo run banked 5 regression fixtures (`tests/regression/rt-20261004-*.json`); run it yourself with `python scripts/redteam_demo.py`.
 - Dashboard: [`dashboard/index.html`](dashboard/index.html) — static case file of the live run.
+- Synthetic eval (`eval/EVAL.md`, n=15): **100% of scams flagged, 100% of legit mail cleared, zero false positives.** Scam recall@SCAM is 0% without provider enrichment — the ensemble is deliberately conservative; with the AgentBoxD signal the same sample scores 0.93 → SCAM.
 - Still open: end-to-end test with a real forwarded email, demo video, Devpost submission (locks Oct 10, 12:00 PM ET).
 
 ## What was built with AI (honesty note, per hackathon rules)

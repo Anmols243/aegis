@@ -1,0 +1,103 @@
+[
+  {
+    "id": "scam-paypal-orig",
+    "expected": "scam",
+    "text": "Dear Customer,\n\nWe detected unusual activity on your PayPal account. Your account will be\nlimited within 24 hours unless you verify your identity immediately.\n\nVerify now: http://paypa1-secure.com/verify?session=8f3k2\n\nFailure to act will result in permanent suspension.\n\nPayPal Security Team"
+  },
+  {
+    "id": "scam-paypal-var02",
+    "expected": "scam",
+    "text": "Verify now: http://paypal-secure-verify.net/verify?session=8f3k2\n\nDear Customer,\n\nWe detected unusual activity on your PayPal account. Your account will be\nlimited within 24 hours unless you verify your identity immediately.\n\nFailure to act will result in permanent suspension.\n\nPayPal Security Team",
+    "axes": [
+      "fresh-lookalike-domain",
+      "restructured"
+    ]
+  },
+  {
+    "id": "scam-paypal-var03",
+    "expected": "scam",
+    "text": "Dear Customer,\n\nWe detected unusual activity on your P\u0430yP\u0430l account. Your account will be\nlimited by end of business today unless you verify your identity immediately.\n\nVerify now: http://paypa1-secure.com/verify?session=8f3k2\n\nFailure to act will result in permanent suspension.\n\nP\u0430yP\u0430l Security Team",
+    "axes": [
+      "homoglyph-brand",
+      "rephrased-urgency"
+    ]
+  },
+  {
+    "id": "scam-paypal-var04",
+    "expected": "scam",
+    "text": "Dear Customer,\n\nWe detected unusual activity on your PayPal account. Your account will be\nlimited within 24 hours unless you confirm your account ownership immediately.\n\nVerify now: http://paypa1-secure.xyz/verify?session=8f3k2\n\nFailure to act will result in permanent suspension.\n\nPayPal Security Team",
+    "axes": [
+      "tld-swap",
+      "rephrased-lure"
+    ]
+  },
+  {
+    "id": "scam-paypal-var05",
+    "expected": "scam",
+    "text": "Dear Customer,\n\nWe detected unusual activity on your P\u0430yP\u0430l account. Your account will be\nlimited by end of business today unless you verify your identity immediately.\n\nVerify now: http://paypa1-secure.xyz/verify?session=8f3k2\n\nFailure to act will result in permanent suspension.\n\nP\u0430yP\u0430l Security Team",
+    "axes": [
+      "homoglyph-brand",
+      "tld-swap",
+      "rephrased-urgency"
+    ]
+  },
+  {
+    "id": "scam-paypal-var06",
+    "expected": "scam",
+    "text": "Dear Customer,\n\nWe detected unusual activity on your P\u0430yP\u0430l account. Your account will be\nlimited within 24 hours unless you verify your identity immediately.\n\nVerify now: http://paypal.com.paypa1-secure.xyz/verify?session=8f3k2\n\nFailure to act will result in permanent suspension.\n\nP\u0430yP\u0430l Security Team",
+    "axes": [
+      "homoglyph-brand",
+      "tld-swap",
+      "brand-as-subdomain"
+    ]
+  },
+  {
+    "id": "scam-paypal-var07",
+    "expected": "scam",
+    "text": "Verify now: http://paypa1-secure.com/verify?session=8f3k2\n\nDear Customer,\n\nWe detected unusual activity on your P\u0430yP\u0430l account. Your account will be\nlimited within 24 hours unless you verify your identity immediately.\n\nFailure to act will result in permanent suspension.\n\nP\u0430yP\u0430l Security Team",
+    "axes": [
+      "homoglyph-brand",
+      "restructured"
+    ]
+  },
+  {
+    "id": "legit-order",
+    "expected": "legit",
+    "text": "From: orders@example-store.com\nSubject: Your order #48291 has shipped\n\nHi Anmol,\n\nGood news \u2014 your order #48291 shipped today via Standard Post.\nTrack it here: https://example-store.com/track/48291\n\nEstimated delivery: Oct 9. Reply to this email if anything looks wrong.\n\nThanks,\nThe Example Store team"
+  },
+  {
+    "id": "legit-newsletter",
+    "expected": "legit",
+    "text": "From: newsletter@pyweekly.example\nSubject: PyWeekly #812\n\nThis week's highlights:\n- A deep dive into pattern matching performance\n- Three new releases in the data-viz space\n\nRead online: https://pyweekly.example/issues/812\nUnsubscribe: https://pyweekly.example/unsub/abc123"
+  },
+  {
+    "id": "legit-bank-alert",
+    "expected": "legit",
+    "text": "From: alerts@mybank.example\nSubject: New device signed in\n\nHi,\n\nA new device signed in to your account on Oct 4 from Mumbai, IN.\nIf this was you, no action is needed.\nIf you don't recognize it, secure your account: https://mybank.example/security\n\n\u2014 MyBank security team"
+  },
+  {
+    "id": "legit-meeting",
+    "expected": "legit",
+    "text": "From: priya@example-corp.com\nSubject: Design review moved to Thursday\n\nHi all,\n\nMoving our design review to Thursday 3pm IST \u2014 same Meet link as usual.\nAgenda: onboarding flow mockups (v3), empty states.\nLet me know if the time doesn't work.\n\nPriya"
+  },
+  {
+    "id": "legit-flight",
+    "expected": "legit",
+    "text": "From: bookings@example-air.com\nSubject: Your itinerary: BOM \u2192 DEL, Oct 18\n\nHi Anmol,\n\nYour booking is confirmed:\nAI-654 \u00b7 BOM \u2192 DEL \u00b7 Oct 18, 07:10 \u2192 09:25 \u00b7 Seat 14A\n\nManage booking: https://example-air.com/manage/XT7K2P\nCheck-in opens 48 hours before departure.\n\nSafe travels!"
+  },
+  {
+    "id": "legit-interview",
+    "expected": "legit",
+    "text": "From: hiring@example-startup.com\nSubject: Interview invitation \u2014 backend intern\n\nHi Anmol,\n\nThanks for applying! We'd like to invite you to a 45-minute technical interview next week. Available slots:\n- Tue Oct 7, 11:00 IST\n- Wed Oct 8, 16:00 IST\n\nReply with what works. Looking forward to it!\n\n\u2014 Riya, Engineering"
+  },
+  {
+    "id": "legit-bill",
+    "expected": "legit",
+    "text": "From: billing@example-power.com\nSubject: Your September electricity bill\n\nHi,\n\nYour September bill of Rs 1,842 is due Oct 15.\nView or pay: https://example-power.com/pay/acct-77821\n\nThis is an automated message \u2014 please don't reply."
+  },
+  {
+    "id": "legit-personal",
+    "expected": "legit",
+    "text": "From: kabir@example-mail.com\nSubject: dinner saturday?\n\nhey \u2014 a few of us are doing dinner at that new place in bandra on saturday, around 8. you in? let me know by friday so i can book.\n\n- k"
+  }
+]
