@@ -7,12 +7,18 @@ SECURITY CONTRACT (non-negotiable):
   fetch and re-checked on the FINAL URL after redirects.
 - 10s timeout, max 5 redirects, 5MB body cap.
 - http/https only. NEVER submit forms, NEVER send credentials.
+- The sandbox connects DIRECTLY (trust_env=False): the DNS it vetted is the
+  DNS it uses. If your deployment needs an egress proxy, set
+  AEGIS_SANDBOX_PROXY — the guard still applies as defense-in-depth, but note
+  the proxy then does the final DNS resolution.
 - A dumb fetch is a feature: a smart fetch is an attack surface.
 """
 from __future__ import annotations
 
+import os
 import re
 import socket
+import ssl
 from dataclasses import dataclass
 from enum import Enum
 from urllib.parse import urlparse
@@ -106,9 +112,15 @@ def inspect_url(url: str) -> SandboxVerdict:
     ok, reason = url_allowed(url)
     if not ok:
         return SandboxVerdict(url=url, note=f"blocked pre-fetch: {reason}")
+    proxy = os.environ.get("AEGIS_SANDBOX_PROXY") or None
+    ca_bundle = os.environ.get("AEGIS_SANDBOX_CA_BUNDLE")
+    verify: ssl.SSLContext | bool = True
+    if ca_bundle:  # e.g. corp/TLS-intercepting egress proxies
+        verify = ssl.create_default_context(cafile=ca_bundle)
     try:
         with httpx.Client(timeout=10.0, follow_redirects=True,
-                          max_redirects=5) as c:
+                          max_redirects=5, trust_env=False,
+                          proxy=proxy, verify=verify) as c:
             with c.stream("GET", url,
                           headers={"User-Agent": "AEGIS-sandbox/1.0"}) as r:
                 final = str(r.url)

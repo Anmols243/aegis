@@ -46,13 +46,27 @@ class VisionVerdict:
         return self.confidence if self.impersonated_brand else 0.0
 
 
+def _launch_browser(p):
+    """Default headless-shell launch, falling back to the full Chromium build
+    (some installs only fetch one of the two)."""
+    try:
+        return p.chromium.launch()
+    except Exception:
+        import glob
+        cands = sorted(glob.glob(os.path.expanduser(
+            "~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome")))
+        if not cands:
+            raise
+        return p.chromium.launch(executable_path=cands[0])
+
+
 def render_html(html: str, out_path: str | None = None) -> str:
     """Static render of untrusted HTML → PNG screenshot. No JavaScript."""
     from playwright.sync_api import sync_playwright
 
     path = out_path or tempfile.mktemp(suffix=".png")
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = _launch_browser(p)
         ctx = browser.new_context(
             java_script_enabled=False,
             viewport={"width": 1280, "height": 900},
