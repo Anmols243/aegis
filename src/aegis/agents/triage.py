@@ -4,7 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from ..config import get_settings
+from ..config import get_settings
 from ..llm import chat_json
+from .validate import (UNTRUSTED_DATA_RULES, as_str_list, sanitize,
+                       wrap_untrusted)
 
 TRIAGE_SYSTEM = """You are AEGIS-Triage, stage 1 of a scam-detection pipeline.
 Extract structured entities from the raw email below. Return ONLY valid JSON
@@ -26,7 +29,8 @@ matching this schema — no prose, no markdown fences:
 Rules:
 - Extract, do not judge. Never label anything a scam.
 - If a field has nothing, use "" or [] — never null, never invent values.
-- Preserve URLs exactly as written, including punycode and odd ports."""
+- Preserve URLs exactly as written, including punycode and odd ports.
+""" + UNTRUSTED_DATA_RULES
 
 
 @dataclass
@@ -44,14 +48,32 @@ class TriageResult:
 
     @classmethod
     def from_dict(cls, d: dict) -> "TriageResult":
-        known = {f for f in cls.__dataclass_fields__}
-        return cls(**{k: v for k, v in d.items() if k in known})
+        """Typed coercion — the model is untrusted, so junk is dropped,
+        never propagated into the pipeline."""
+        if not isinstance(d, dict):
+            raise ValueError("triage output is not a JSON object")
+        known = set(cls.__dataclass_fields__)
+        clean: dict = {}
+        for k, v in d.items():
+            if k not in known:
+                continue
+            if k in ("urls", "domains", "phone_numbers", "attachment_names",
+                     "urgency_signals", "brand_mentions"):
+                clean[k] = as_str_list(v)
+            else:
+                clean[k] = sanitize(v) if isinstance(v, str) else ""
+        # Domains: lowercase + dedup, as the schema promises.
+        clean["domains"] = list(dict.fromkeys(
+            x.lower() for x in clean.get("domains", [])))
+        return cls(**clean)
 
 
 def triage(raw_email: str, headers: str = "") -> TriageResult:
     """Run triage on one raw email. Returns structured entities."""
     model = get_settings().model_triage
-    user_msg = f"HEADERS:\n{headers}\n\nBODY:\n{raw_email}"
+    # The email is wrapped as UNTRUSTED DATA — never bare instructions.
+    user_msg = (f"HEADERS:\n{headers}\n\n"
+                f"BODY:\n{wrap_untrusted(raw_email)}")
     data = chat_json(
         model,
         [

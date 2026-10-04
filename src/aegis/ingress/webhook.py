@@ -23,8 +23,13 @@ from fastapi.responses import JSONResponse
 from .. import notify
 from ..config import agentboxd_webhook_secret
 from ..orchestrator import analyze_email
+from .idempotency import already_processed, mark_processed
 
 app = FastAPI(title="AEGIS ingress")
+
+# Reject absurd payloads before parsing — an AgentBoxD webhook envelope
+# carrying a full message is kilobytes; 5MB is generous headroom.
+MAX_WEBHOOK_BYTES = 5 * 1024 * 1024
 
 
 def verify_signature(body: bytes, signature: str | None, secret: str) -> bool:
@@ -95,18 +100,34 @@ async def agentboxd_webhook(
     x_mailroom_signature: str | None = Header(default=None),
 ) -> JSONResponse:
     body = await request.body()
+    if len(body) > MAX_WEBHOOK_BYTES:
+        raise HTTPException(status_code=413, detail="webhook payload too large")
     secret = agentboxd_webhook_secret()
     if not verify_signature(body, x_mailroom_signature, secret):
         raise HTTPException(status_code=401, detail="bad webhook signature")
 
-    event = json.loads(body)
-    os.makedirs("data/inbox", exist_ok=True)
+    try:
+        event = json.loads(body)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400,
+                            detail="malformed webhook JSON") from None
+    if not isinstance(event, dict):
+        raise HTTPException(status_code=400,
+                            detail="webhook body must be a JSON object")
+
     inbox_id, message_id = _message_ref(event)
+
+    # Idempotency: a redelivered webhook is acknowledged, not reprocessed.
+    if message_id and already_processed(message_id):
+        return JSONResponse({"ok": True, "duplicate": True})
+
+    os.makedirs("data/inbox", exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     path = f"data/inbox/{ts}_{message_id or 'unknown'}.json"
     with open(path, "w") as f:
         json.dump(event, f, indent=2)
 
     if inbox_id and message_id:
+        mark_processed(message_id)
         background.add_task(_process, inbox_id, message_id, event)
     return JSONResponse({"ok": True, "stored": path})

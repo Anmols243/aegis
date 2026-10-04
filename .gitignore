@@ -6,3 +6,5 @@ data/inbox/
 data/*.json
 data/*.db
 !data/.gitkeep
+
+data/errors/
