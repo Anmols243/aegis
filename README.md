@@ -3,7 +3,10 @@
 **ForgeHacks 2026 · AI + Cybersecurity track**
 *Track prompt: "Build an AI-powered solution that helps people recognize, prevent, verify, or respond to scams, impersonation, and fraud enabled by AI or modern technologies."*
 
-Forward any suspicious email to AEGIS. A pipeline of specialist AI agents — triage, forensic analysis, visual brand-impersonation inspection, link sandboxing — dissects it, cross-references a threat-intelligence graph of known scam campaigns, and replies with an **evidence-cited verdict: SCAM / SUSPICIOUS / LIKELY SAFE**. A red-team agent continuously mutates real scams to probe the pipeline's blind spots; every miss becomes a permanent regression test.
+Forward any suspicious email to AEGIS. A pipeline of specialist AI agents — triage, forensic analysis, visual brand-impersonation inspection, link sandboxing — dissects it, cross-references a threat-intelligence graph of known scam campaigns, and replies with an **evidence-cited verdict: SCAM / SUSPICIOUS / LIKELY SAFE**. A red-team engine continuously mutates real scams to probe the pipeline's blind spots; every miss becomes a permanent regression test.
+
+![AEGIS case-file dashboard](dashboard/screenshot.png)
+*The case-file dashboard — open [`dashboard/index.html`](dashboard/index.html) for the full page.*
 
 ## The problem
 
@@ -49,10 +52,10 @@ Phishing remains the #1 way people get compromised, and AI-generated lures are n
                            ▼
               ┌────────────────────────┐
               │ Verdict card → reply   │  via AgentBoxD
-              │ Campaign dashboard     │  Momen
+              │ Case-file dashboard    │  dashboard/
               └────────────────────────┘
 
-   Offline loop: Red-team agent ──mutates──► pipeline ──miss──► tests/regression/
+   Offline loop: Red-team engine ──mutates──► pipeline ──miss──► tests/regression/
 ```
 
 Every verdict cites its evidence: header lines, URLs, phrases, screenshots. No black boxes.
@@ -62,11 +65,11 @@ Every verdict cites its evidence: header lines, URLs, phrases, screenshots. No b
 | Resource | Role in AEGIS |
 |---|---|
 | **AgentBoxD** | Real agent inbox; inbound injection/phishing/SPF-DKIM-DMARC scores used as *features*; signed webhooks; reply channel |
-| **Featherless AI** | The entire agent ensemble — triage (fast model), forensic analyst (long-context), vision inspector (open vision model), red-team mutator |
-| **n8n** | Webhook → pipeline → reply orchestration plumbing |
-| **Momen** | Campaign-graph dashboard |
-| **YouCam API** | Demo assets (verdict-card visuals, video thumbnails) |
-| **DevSwarm** | Build tooling |
+| **Featherless AI** | The agent ensemble — triage and forensic analyst (`moonshotai/Kimi-K3`), vision inspector (`Qwen/Qwen3-VL-30B-A3B-Instruct`). Red-team mutation is a deterministic in-repo engine, not an LLM call |
+| **n8n** | Webhook → pipeline → reply orchestration plumbing (workflow draft in `n8n/`) |
+| **Momen** | Evaluated for the campaign dashboard; shipped a static case-file dashboard instead (`dashboard/`) |
+| **YouCam API** | Not used in the final build |
+| **DevSwarm** | Not used in the final build |
 
 ## Quickstart
 
@@ -82,9 +85,14 @@ uvicorn aegis.ingress.webhook:app --port 8000
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design and [BUILD_PLAN.md](BUILD_PLAN.md) for the day-by-day plan.
 
-## Current status (Oct 4)
+## Current status (Oct 5)
 
-The full pipeline is implemented and offline-tested (`python -m unittest tests.test_offline` — 14 pass, 1 skipped pending Chromium download). Live end-to-end (forward email → verdict reply) needs the sponsor API keys in `.env` — see Day 0 checklist in BUILD_PLAN.md.
+- Full pipeline implemented; offline suite green: `python -m unittest tests.test_offline` — **15/15 pass**.
+- Live runs on Featherless (vault-backed skill, no keys in repo): triage + forensic on `moonshotai/Kimi-K3`, vision on `Qwen/Qwen3-VL-30B-A3B-Instruct`. Sample PayPal phish → **SCAM at 93%** (forensic 0.98, AgentBoxD 0.92, sandbox 1.0).
+- Live AgentBoxD inbox created; outbound reply path verified end-to-end against the API.
+- Red-team engine: 5-variant demo run banked 5 regression fixtures (`tests/regression/rt-20261004-*.json`); run it yourself with `python scripts/redteam_demo.py`.
+- Dashboard: [`dashboard/index.html`](dashboard/index.html) — static case file of the live run.
+- Still open: end-to-end test with a real forwarded email, demo video, Devpost submission (locks Oct 10, 12:00 PM ET).
 
 ## What was built with AI (honesty note, per hackathon rules)
 
@@ -92,8 +100,8 @@ Built during the ForgeHacks window (Oct 3–10, 2026) with AI coding assistance 
 
 ## Submission checklist
 
-- [ ] Track selected: AI + Cybersecurity
+- [x] Track selected: AI + Cybersecurity
 - [ ] Demo video (2–4 min) on YouTube — see `demo/DEMO_SCRIPT.md`
-- [ ] GitHub repo + this README
+- [x] GitHub repo + this README — https://github.com/Anmols243/aegis
 - [ ] Devpost writeup: problem, technical approach, impact
-- [ ] Screenshots / architecture diagram / deployment link
+- [x] Screenshots / architecture diagram — `dashboard/screenshot.png`, ASCII diagram above

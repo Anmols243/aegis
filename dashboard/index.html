@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AEGIS — Case File 001</title>
+<style>
+  :root{
+    --paper:#e9eae3;
+    --paper-deep:#dedfd6;
+    --ink:#1b1e1b;
+    --ink-soft:#4a4e48;
+    --ink-faint:#7c8078;
+    --rule:#c4c6ba;
+    --scam:#b3271e;
+    --suspicious:#96690e;
+    --safe:#2c6e3f;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:16px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .sheet{
+    max-width:880px;
+    margin:0 auto;
+    padding:56px 40px 80px;
+  }
+  /* ---------- masthead ---------- */
+  .masthead{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:16px;
+    margin-bottom:40px;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .wordmark{
+    font-weight:800;
+    font-size:28px;
+    letter-spacing:-0.03em;
+  }
+  .wordmark span{color:var(--scam)}
+  .case-meta{
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--ink-soft);
+    text-align:right;
+  }
+  .lede{
+    font-size:19px;
+    line-height:1.5;
+    max-width:62ch;
+    margin-bottom:48px;
+    color:var(--ink-soft);
+  }
+  .lede strong{color:var(--ink);font-weight:650}
+  h2{
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:0.06em;
+    color:var(--ink-faint);
+    border-bottom:1px solid var(--rule);
+    padding-bottom:8px;
+    margin:56px 0 0;
+  }
+  /* ---------- verdict ---------- */
+  .verdict-block{
+    display:flex;
+    gap:40px;
+    align-items:flex-start;
+    margin-top:28px;
+    flex-wrap:wrap;
+  }
+  .stamp{
+    border:4px double var(--scam);
+    color:var(--scam);
+    font-weight:800;
+    font-size:44px;
+    letter-spacing:0.02em;
+    padding:10px 26px;
+    transform:rotate(-4deg);
+    white-space:nowrap;
+    box-shadow:inset 0 0 0 1px rgba(179,39,30,.25);
+  }
+  .verdict-data{flex:1;min-width:260px}
+  .score-line{
+    font-family:var(--mono);
+    font-size:14px;
+    color:var(--ink-soft);
+    margin-bottom:12px;
+  }
+  .score-line b{color:var(--ink);font-size:20px}
+  .meter{
+    height:6px;
+    background:var(--paper-deep);
+    position:relative;
+    margin:6px 0 18px;
+    max-width:420px;
+  }
+  .meter i{
+    position:absolute;left:0;top:0;bottom:0;
+    width:93%;
+    background:var(--scam);
+  }
+  .meter .tick{
+    position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);
+    left:70%;
+  }
+  .meter-labels{
+    display:flex;justify-content:space-between;max-width:420px;
+    font-family:var(--mono);font-size:11px;color:var(--ink-faint);
+  }
+  /* ---------- exhibits ---------- */
+  .exhibit{
+    display:grid;
+    grid-template-columns:92px 1fr;
+    gap:16px;
+    padding:16px 0;
+    border-bottom:1px solid var(--rule);
+  }
+  .exhibit-tag{
+    font-family:var(--mono);
+    font-size:12px;
+    font-weight:700;
+    color:var(--scam);
+    padding-top:2px;
+  }
+  .exhibit h3{font-size:15px;font-weight:650;margin-bottom:4px}
+  .exhibit p{font-size:14px;color:var(--ink-soft);max-width:64ch}
+  .exhibit code{
+    font-family:var(--mono);
+    font-size:13px;
+    background:var(--paper-deep);
+    padding:1px 6px;
+    border-radius:3px;
+    color:var(--ink);
+  }
+  /* ---------- pipeline ---------- */
+  .stage{
+    display:grid;
+    grid-template-columns:44px 190px 1fr auto;
+    gap:16px;
+    padding:14px 0;
+    border-bottom:1px solid var(--rule);
+    align-items:baseline;
+  }
+  .stage-num{font-family:var(--mono);font-size:13px;color:var(--ink-faint)}
+  .stage-name{font-weight:650;font-size:15px}
+  .stage-desc{font-size:14px;color:var(--ink-soft);max-width:52ch}
+  .stage-signal{font-family:var(--mono);font-size:13px;text-align:right;white-space:nowrap}
+  .stage-signal.hot{color:var(--scam);font-weight:700}
+  /* ---------- red team ---------- */
+  table{width:100%;border-collapse:collapse;margin-top:20px;font-size:14px}
+  th{
+    text-align:left;
+    font-family:var(--mono);
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-faint);
+    padding:8px 12px 8px 0;
+    border-bottom:1px solid var(--ink);
+  }
+  td{padding:10px 12px 10px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+  td.mono{font-family:var(--mono);font-size:13px}
+  .pill{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:12px;
+    font-weight:700;
+    color:var(--suspicious);
+    border:1.5px solid var(--suspicious);
+    border-radius:20px;
+    padding:1px 10px;
+    white-space:nowrap;
+  }
+  .note{
+    margin-top:20px;
+    padding:14px 18px;
+    border-left:3px solid var(--suspicious);
+    background:rgba(150,105,14,.07);
+    font-size:14px;
+    color:var(--ink-soft);
+    max-width:72ch;
+  }
+  .note strong{color:var(--ink)}
+  /* ---------- footer ---------- */
+  footer{
+    margin-top:64px;
+    border-top:2px solid var(--ink);
+    padding-top:16px;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--ink-soft);
+  }
+  footer a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+  @media (max-width:640px){
+    .sheet{padding:32px 20px 64px}
+    .stage{grid-template-columns:36px 1fr;grid-auto-rows:auto}
+    .stage-desc{grid-column:2}
+    .stage-signal{grid-column:2;text-align:left}
+    .exhibit{grid-template-columns:1fr}
+    .stamp{font-size:34px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .stamp{transform:none}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="masthead">
+    <div class="wordmark">AEGIS<span>.</span></div>
+    <div class="case-meta">case 001 · paypal phish<br>analyzed 2026-10-04 · live run</div>
+  </header>
+
+  <p class="lede">
+    A suspicious email arrives at the AEGIS inbox. Six agents read it —
+    triage, forensics, vision, sandbox, threat-intel, arbiter — and each one
+    has to <strong>cite its evidence</strong>. This is the case file for the
+    first live run.
+  </p>
+
+  <h2>Verdict</h2>
+  <div class="verdict-block">
+    <div class="stamp">SCAM</div>
+    <div class="verdict-data">
+      <div class="score-line"><b>93%</b> confidence · ensemble score 0.93</div>
+      <div class="meter" role="img" aria-label="Ensemble score 0.93, scam threshold 0.70">
+        <i></i><span class="tick"></span>
+      </div>
+      <div class="meter-labels"><span>0 · likely safe</span><span>scam line 0.70</span><span>1.0</span></div>
+      <p style="font-size:14px;color:var(--ink-soft);max-width:52ch">
+        Four independent signals agreed. The dissent log is empty —
+        when agents disagree by more than 0.5, the verdict card says so.
+      </p>
+    </div>
+  </div>
+
+  <h2>Evidence</h2>
+
+  <div class="exhibit">
+    <div class="exhibit-tag">Exhibit A</div>
+    <div>
+      <h3>Homoglyph in the sender name</h3>
+      <p>The display name reads <code>"PayPaI Security"</code> — capital&nbsp;I where the
+      second&nbsp;l should be. The sending domain is
+      <code>paypa1-secure.com</code>, with the digit&nbsp;1 standing in for&nbsp;l.
+      Neither matches <code>paypal.com</code>.</p>
+    </div>
+  </div>
+
+  <div class="exhibit">
+    <div class="exhibit-tag">Exhibit B</div>
+    <div>
+      <h3>Credential-harvesting URL</h3>
+      <p><code>http://paypa1-secure.com/verify?session=8f3k2</code> — plain HTTP,
+      a lookalike host, and a <code>/verify</code> path built to collect logins.
+      The sandbox fetched it with JavaScript disabled and flagged the
+      password field.</p>
+    </div>
+  </div>
+
+  <div class="exhibit">
+    <div class="exhibit-tag">Exhibit C</div>
+    <div>
+      <h3>Urgency as a weapon</h3>
+      <p><code>"limited within 24 hours"</code>,
+      <code>"verify your identity immediately"</code>,
+      <code>"permanent suspension"</code> — three escalating threats in five
+      lines. Authentication headers failed across the board:
+      <code>spf=fail; dkim=fail; dmarc=fail</code>.</p>
+    </div>
+  </div>
+
+  <h2>How the agents voted</h2>
+
+  <div class="stage">
+    <div class="stage-num">01</div>
+    <div class="stage-name">Triage</div>
+    <div class="stage-desc">Parsed sender, reply-to, URLs, domains and urgency signals into structured entities.</div>
+    <div class="stage-signal">3 entities</div>
+  </div>
+  <div class="stage">
+    <div class="stage-num">02</div>
+    <div class="stage-name">Forensic analyst</div>
+    <div class="stage-desc">Read the full text against brand-impersonation and social-engineering patterns.</div>
+    <div class="stage-signal hot">risk 0.98</div>
+  </div>
+  <div class="stage">
+    <div class="stage-num">03</div>
+    <div class="stage-name">Link sandbox</div>
+    <div class="stage-desc">Fetched the URL with no JavaScript, SSRF guards on, and inspected the page.</div>
+    <div class="stage-signal hot">risk 1.00</div>
+  </div>
+  <div class="stage">
+    <div class="stage-num">04</div>
+    <div class="stage-name">AgentBoxD AI</div>
+    <div class="stage-desc">Provider-side phishing categorization on the inbound message.</div>
+    <div class="stage-signal hot">risk 0.92</div>
+  </div>
+  <div class="stage">
+    <div class="stage-num">05</div>
+    <div class="stage-name">Threat graph</div>
+    <div class="stage-desc">Checked the sender, domains and URLs against known campaigns.</div>
+    <div class="stage-signal">no match</div>
+  </div>
+  <div class="stage">
+    <div class="stage-num">06</div>
+    <div class="stage-name">Arbiter</div>
+    <div class="stage-desc">Weighted ensemble (forensic 0.35 · sandbox 0.25 · agentboxd 0.20 · vision 0.20). Fail-closed: missing signals are dropped, weights renormalized.</div>
+    <div class="stage-signal hot">0.93 → SCAM</div>
+  </div>
+
+  <h2>Red team</h2>
+  <p style="margin-top:20px;font-size:15px;color:var(--ink-soft);max-width:70ch">
+    The red-team engine mutated the original phish into five adversarial
+    variants — new lookalike domains, homoglyph brands, rephrased threats —
+    and attacked the pipeline with each one.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>Variant</th><th>Mutation axes</th><th>Verdict</th><th>Score</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">rt-20261004-001</td><td>fresh-lookalike-domain, restructured</td><td><span class="pill">SUSPICIOUS</span></td><td class="mono">0.69</td></tr>
+      <tr><td class="mono">rt-20261004-002</td><td>homoglyph-brand, rephrased-urgency</td><td><span class="pill">SUSPICIOUS</span></td><td class="mono">0.69</td></tr>
+      <tr><td class="mono">rt-20261004-003</td><td>tld-swap, rephrased-lure</td><td><span class="pill">SUSPICIOUS</span></td><td class="mono">0.69</td></tr>
+      <tr><td class="mono">rt-20261004-004</td><td>homoglyph-brand, tld-swap, rephrased-urgency</td><td><span class="pill">SUSPICIOUS</span></td><td class="mono">0.69</td></tr>
+      <tr><td class="mono">rt-20261004-005</td><td>rephrased-lure, restructured</td><td><span class="pill">SUSPICIOUS</span></td><td class="mono">0.69</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>What the red team actually found.</strong> Zero evasions — forensics
+    scored ~0.97 on every variant. But all five landed at 0.69, one point under
+    the 0.70 scam line: the sandbox marks unresolvable domains 0.3, and the test
+    harness runs without AgentBoxD scores or vision. In production, with
+    AgentBoxD's phishing signal present, these score ~0.75 → SCAM. The misses
+    are banked as regression fixtures in <span style="font-family:var(--mono)">tests/regression/</span>;
+    the loop closes when a future run catches them.
+  </div>
+
+  <footer>
+    <span>AEGIS · ForgeHacks 2026 · AI + Cybersecurity</span>
+    <span>figures from live runs 2026-10-04/05 · <a href="https://github.com/Anmols243/aegis">github.com/Anmols243/aegis</a></span>
+  </footer>
+
+</div>
+</body>
+</html>
