@@ -14,6 +14,7 @@ import hmac
 import json
 import os
 import sys
+import threading
 import traceback
 from datetime import datetime, timezone
 
@@ -22,14 +23,38 @@ from fastapi.responses import JSONResponse
 
 from .. import notify
 from ..config import agentboxd_webhook_secret
+from ..middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from ..orchestrator import analyze_email
 from .idempotency import already_processed, mark_processed
 
 app = FastAPI(title="AEGIS ingress")
+app.add_middleware(SecurityHeadersMiddleware)
+# Webhooks are infrequent and each one is expensive (full LLM pipeline):
+# 10/min sustained, burst 20. Bursts beyond that get 429 + Retry-After.
+app.add_middleware(RateLimitMiddleware, rate=10.0, per_seconds=60.0,
+                   burst=20)
 
 # Reject absurd payloads before parsing — an AgentBoxD webhook envelope
 # carrying a full message is kilobytes; 5MB is generous headroom.
 MAX_WEBHOOK_BYTES = 5 * 1024 * 1024
+
+# Each accepted webhook spawns a full multi-agent analysis (LLM calls).
+# Bound concurrent analyses so a burst can't exhaust the box; excess
+# deliveries are rejected with 429 and AgentBoxD will redeliver.
+MAX_CONCURRENT_ANALYSES = 4
+_analysis_slots = threading.BoundedSemaphore(MAX_CONCURRENT_ANALYSES)
+
+
+def _audit(event: str, **fields) -> None:
+    """Append-only JSON-lines audit trail for ingress decisions."""
+    try:
+        os.makedirs("data", exist_ok=True)
+        rec = {"ts": datetime.now(timezone.utc).isoformat(),
+               "event": event, **fields}
+        with open("data/audit.log", "a") as f:
+            f.write(json.dumps(rec) + "\n")
+    except OSError:
+        pass
 
 
 def verify_signature(body: bytes, signature: str | None, secret: str) -> bool:
@@ -64,6 +89,13 @@ def _extract_content(event: dict) -> dict | None:
 
 
 def _process(inbox_id: str, message_id: str, event: dict) -> None:
+    try:
+        _run_process(inbox_id, message_id, event)
+    finally:
+        _analysis_slots.release()
+
+
+def _run_process(inbox_id: str, message_id: str, event: dict) -> None:
     try:
         msg = _extract_content(event)
         if msg is None:  # envelope payload — fetch the full message
@@ -104,6 +136,8 @@ async def agentboxd_webhook(
         raise HTTPException(status_code=413, detail="webhook payload too large")
     secret = agentboxd_webhook_secret()
     if not verify_signature(body, x_mailroom_signature, secret):
+        _audit("webhook_bad_signature",
+               remote=request.client.host if request.client else "?")
         raise HTTPException(status_code=401, detail="bad webhook signature")
 
     try:
@@ -128,6 +162,14 @@ async def agentboxd_webhook(
         json.dump(event, f, indent=2)
 
     if inbox_id and message_id:
+        if not _analysis_slots.acquire(blocking=False):
+            _audit("webhook_saturated", message_id=message_id)
+            raise HTTPException(
+                status_code=429,
+                detail="analysis pipeline saturated, redeliver later")
         mark_processed(message_id)
         background.add_task(_process, inbox_id, message_id, event)
+        _audit("webhook_accepted", message_id=message_id, inbox_id=inbox_id)
+    else:
+        _audit("webhook_missing_ids", stored=path)
     return JSONResponse({"ok": True, "stored": path})

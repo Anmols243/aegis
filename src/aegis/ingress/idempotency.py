@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS webhook_processed (
 
 def _connect(path: str = "data/webhook.db") -> sqlite3.Connection:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    conn = sqlite3.connect(path, timeout=10)
+    conn = sqlite3.connect(path, timeout=15)
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute(SCHEMA)
     return conn
 

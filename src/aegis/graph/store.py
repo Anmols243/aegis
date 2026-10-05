@@ -137,6 +137,22 @@ class ThreatGraph:
                 return camp
         return None
 
+    def infra_for(self, email_id: str) -> dict[str, list[str]]:
+        """Structured indicators for one email: {node_type: [values]}.
+
+        Used by the abuse-report generator. Returns {} for unknown ids.
+        """
+        node = f"email:{email_id}"
+        if node not in self.g:
+            return {}
+        out: dict[str, list[str]] = {}
+        for n in self.g.neighbors(node):
+            ntype = self.g.nodes[n].get("type", "")
+            if ntype in INFRA_TYPES and ntype != "template_hash":
+                val = n.split(":", 1)[1] if ":" in n else n
+                out.setdefault(ntype, []).append(val)
+        return {k: sorted(set(v)) for k, v in out.items()}
+
     def relationships(self, email_id: str) -> list[Relationship]:
         """Explicit pairwise links for one email, strongest first.
 

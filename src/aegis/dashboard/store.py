@@ -24,11 +24,6 @@ def redact_pii(text: str) -> str:
     return text
 
 
-def _maybe_redact(sender: str, preview: str) -> tuple[str, str]:
-    if REDACT_PII:
-        return redact_pii(sender), redact_pii(preview)
-    return sender, preview
-
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS verdicts (
     email_id     TEXT PRIMARY KEY,
@@ -57,8 +52,11 @@ _MIGRATIONS = [
 
 def _connect(path: str = "data/dashboard.db") -> sqlite3.Connection:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, timeout=15)
     conn.row_factory = sqlite3.Row
+    # WAL: webhook background tasks write while the dashboard reads.
+    # Without it, concurrent access hits "database is locked".
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute(SCHEMA)
     for stmt in _MIGRATIONS:
         try:
@@ -91,8 +89,9 @@ def record(res, body: str = "", path: str = "data/dashboard.db") -> None:
                         "detail": s.detail, "evidence": s.evidence}
                        for s in sig_report.signals]
     timings = getattr(res, "stage_timings", None) or {}
-    sender, preview = _maybe_redact(
-        (triage.sender if triage else "")[:200], (body or "")[:400])
+    # Raw values are stored; PII masking happens at read time (_redact_row)
+    # so the same database can serve private and public views.
+    sender, preview = ((triage.sender if triage else "")[:200], (body or "")[:400])
     conn = _connect(path)
     try:
         conn.execute(
@@ -132,6 +131,18 @@ def record(res, body: str = "", path: str = "data/dashboard.db") -> None:
         conn.close()
 
 
+def _redact_row(row: dict) -> dict:
+    """Mask PII on the way out when the dashboard is publicly visible.
+
+    The store keeps raw values; redaction is a presentation concern so the
+    same database can serve both private and public views.
+    """
+    if REDACT_PII:
+        row["sender"] = redact_pii(row.get("sender") or "")
+        row["body_preview"] = redact_pii(row.get("body_preview") or "")
+    return row
+
+
 def list_verdicts(limit: int = 50,
                   path: str = "data/dashboard.db") -> list[dict]:
     conn = _connect(path)
@@ -139,20 +150,51 @@ def list_verdicts(limit: int = 50,
         rows = conn.execute(
             "SELECT * FROM verdicts ORDER BY received_at DESC LIMIT ?",
             (limit,)).fetchall()
-        return [dict(r) for r in rows]
+        return [_redact_row(dict(r)) for r in rows]
     finally:
         conn.close()
 
 
 def get_verdict(email_id: str,
-                path: str = "data/dashboard.db") -> dict | None:
+                path: str = "data/dashboard.db",
+                raw: bool = False) -> dict | None:
+    """Fetch one verdict. `raw=True` skips PII redaction — for the
+    security-team-only abuse report (a masked sender is useless there)."""
     conn = _connect(path)
     try:
         row = conn.execute("SELECT * FROM verdicts WHERE email_id = ?",
                            (email_id,)).fetchone()
-        return dict(row) if row else None
+        if row is None:
+            return None
+        d = dict(row)
+        return d if raw else _redact_row(d)
     finally:
         conn.close()
+
+
+def blast_status(path: str = "data/dashboard.db", window_min: int = 15,
+                 threshold: int = 5) -> dict:
+    """Inbound-velocity anomaly: is mail arriving in a burst?
+
+    A sudden spike of analyzed emails often means a coordinated campaign
+    blast. Returns {"alert": bool, "count": n, ...} for the dashboard.
+    """
+    from datetime import datetime, timedelta, timezone
+    cutoff = (datetime.now(timezone.utc)
+              - timedelta(minutes=window_min)).isoformat()
+    conn = _connect(path)
+    try:
+        n = conn.execute(
+            "SELECT COUNT(*) FROM verdicts WHERE received_at >= ?",
+            (cutoff,)).fetchone()[0]
+        scam = conn.execute(
+            "SELECT COUNT(*) FROM verdicts WHERE received_at >= ? "
+            "AND label IN ('scam','suspicious')",
+            (cutoff,)).fetchone()[0]
+    finally:
+        conn.close()
+    return {"alert": n >= threshold, "count": n, "flagged": scam,
+            "window_min": window_min, "threshold": threshold}
 
 
 def stats(path: str = "data/dashboard.db") -> dict:
