@@ -8,3 +8,5 @@ data/*.db
 !data/.gitkeep
 
 data/errors/
+data/.dash_token
+data/audit.log

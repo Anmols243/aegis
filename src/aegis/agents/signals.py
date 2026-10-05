@@ -325,6 +325,90 @@ _SUSPICIOUS_PHONE_RES = [
 ]
 
 
+# Brands scammers impersonate most. The radar compares the *registrable*
+# domain of every sender/URL domain against these with a similarity score;
+# close-but-not-equal => likely typosquat impersonation.
+KNOWN_BRANDS = [
+    "paypal", "apple", "microsoft", "amazon", "google", "netflix",
+    "bankofamerica", "chase", "wellsfargo", "irs", "dhl", "fedex",
+    "instagram", "facebook", "linkedin", "coinbase", "binance",
+]
+
+
+def _registrable(domain: str) -> str:
+    """crude registrable-domain: last two labels (paypa1-secure.com)."""
+    parts = (domain or "").lower().strip(".").split(".")
+    return ".".join(parts[-2:]) if len(parts) >= 2 else domain.lower()
+
+
+def _similarity(a: str, b: str) -> float:
+    """Jaccard-ish bigram similarity, cheap and dependency-free."""
+    if not a or not b:
+        return 0.0
+    ga = {a[i:i + 2] for i in range(len(a) - 1)} or {a}
+    gb = {b[i:i + 2] for i in range(len(b) - 1)} or {b}
+    return len(ga & gb) / len(ga | gb)
+
+
+# Legit brand-owned domains that resemble the brand itself —
+# never flag these (e.g. amazonaws.com is really Amazon).
+KNOWN_GOOD = {
+    "amazonaws.com", "googleapis.com", "gstatic.com", "googleusercontent.com",
+    "fbcdn.net", "cdninstagram.com", "microsoftonline.com", "live.com",
+    "outlook.com", "office365.com",
+}
+
+
+def check_brand_impersonation(sender: str, domains: list[str],
+                              brand_mentions: list[str]) -> list[Signal]:
+    """Flag lookalike domains that impersonate a known brand.
+
+    Catches paypa1-secure.com (paypal), micros0ft-login.net (microsoft),
+    etc. — the single most common phishing pattern. Deterministic: the
+    registrable domain is split into tokens on [-_.] and each token is
+    compared by bigram similarity against known brands (>= 0.40 flags).
+    Exact brand matches and known-good brand infrastructure are excluded.
+    """
+    out: list[Signal] = []
+    seen: set[str] = set()
+    cands = list(dict.fromkeys(
+        [_registrable(d) for d in (domains or []) if d]))
+    m = re.search(r"@([\w.-]+)", sender or "")
+    if m:
+        cands.append(_registrable(m.group(1)))
+    for dom in cands:
+        if not dom or dom in seen or dom in KNOWN_GOOD:
+            continue
+        seen.add(dom)
+        # The brand's own domain (or its subdomains) is never impersonation.
+        if any(dom == f"{b}.com" or dom.endswith(f".{b}.com")
+               for b in KNOWN_BRANDS):
+            continue
+        tokens = re.split(r"[-_.]", dom.split(".")[0])
+        best: tuple[str, float] | None = None
+        for tok in tokens:
+            if len(tok) < 4:
+                continue
+            for brand in KNOWN_BRANDS:
+                # NOTE: a token exactly equal to the brand still flags here
+                # (e.g. apple-support.net) — the brand-domain exclusion above
+                # already cleared the legitimate cases.
+                sim = _similarity(tok, brand)
+                if sim >= 0.40 and (best is None or sim > best[1]):
+                    best = (brand, sim)
+        if best:
+            brand, sim = best
+            mentioned = brand in [b.lower() for b in (brand_mentions or [])]
+            out.append(_sig(
+                "brand-impersonation", "high",
+                f"Domain {dom} looks like a typosquat of {brand} "
+                f"(similarity {sim:.2f})"
+                + (" and the brand is named in the message" if mentioned
+                   else ""),
+                dom))
+    return out
+
+
 def check_phone_numbers(phones: list[str]) -> list[Signal]:
     sigs = []
     for p in phones or []:
@@ -369,6 +453,9 @@ def analyze_signals(raw_body: str = "", headers: str = "", html: str = "",
         lambda: check_encoded_url_tricks(t.get("urls", [])),
         lambda: check_attachments(t.get("attachment_names", [])),
         lambda: check_phone_numbers(t.get("phone_numbers", [])),
+        lambda: check_brand_impersonation(t.get("sender", ""),
+                                          t.get("domains", []),
+                                          t.get("brand_mentions", [])),
     ]
     sigs: list[Signal] = []
     for c in checks:

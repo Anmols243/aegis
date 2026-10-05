@@ -1,7 +1,9 @@
 """AEGIS-Triage: fast entity extraction. Zero judgement — extraction only."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 from ..config import get_settings
 from ..config import get_settings
@@ -66,6 +68,31 @@ class TriageResult:
         clean["domains"] = list(dict.fromkeys(
             x.lower() for x in clean.get("domains", [])))
         return cls(**clean)
+
+
+_URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
+_FROM_RE = re.compile(r"^From:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+_REPLYTO_RE = re.compile(r"^Reply-To:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+
+
+def triage_fallback(raw_email: str, headers: str = "") -> TriageResult:
+    """Deterministic entity extraction — no LLM.
+
+    Used when triage's model is unreachable after retries. Recall is lower
+    than the LLM path (no semantic parsing), but the downstream deterministic
+    signals + arbiter still fail closed, so the verdict degrades to
+    SUSPICIOUS rather than vanishing.
+    """
+    urls = list(dict.fromkeys(_URL_RE.findall(raw_email or "")))
+    domains = list(dict.fromkeys(
+        urlsplit(u).hostname or "" for u in urls))
+    domains = [d.lower() for d in domains if d]
+    m = _FROM_RE.search(headers or "")
+    sender = m.group(1).strip() if m else ""
+    m = _REPLYTO_RE.search(headers or "")
+    reply_to = m.group(1).strip() if m else ""
+    return TriageResult(sender=sender, reply_to=reply_to,
+                        urls=urls, domains=domains)
 
 
 def triage(raw_email: str, headers: str = "") -> TriageResult:

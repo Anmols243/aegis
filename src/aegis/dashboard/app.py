@@ -13,9 +13,11 @@ import os
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from . import store
+from ..middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 
 HERE = Path(__file__).resolve().parent
 
@@ -55,32 +57,86 @@ os.chdir(ROOT)
 
 app = FastAPI(title="AEGIS live dashboard")
 
+# The standalone Momen-copy frontend (tools/momen/copy) is hosted separately
+# from this API, so it needs cross-origin GET access. The dashboard token
+# stays in the query string; CORS does not weaken that check.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
+app.add_middleware(SecurityHeadersMiddleware)
+# ~2 req/s sustained, burst 60: polling (10s) + human browsing stays well
+# under; scrapers get 429s.
+app.add_middleware(RateLimitMiddleware, rate=120.0, per_seconds=60.0,
+                   burst=60)
+
 
 @app.get("/")
 def index(request: Request, _auth: None = Depends(_require_token)
           ) -> FileResponse:
-    return FileResponse(HERE / "live.html")
+    # no-store: the page is a single HTML file whose theme changes with deploys;
+    # heuristic browser caching would otherwise show a stale theme.
+    return FileResponse(HERE / "live.html",
+                        headers={"Cache-Control": "no-store"})
+
+
+@app.get("/pixel-stars.js")
+def pixel_stars() -> FileResponse:
+    # 16-bit starfield background, served as a separate file (no-store so
+    # theme iterations reach visitors immediately).
+    return FileResponse(HERE / "pixel-stars.js",
+                        media_type="application/javascript",
+                        headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/stats")
 def api_stats(request: Request, _auth: None = Depends(_require_token)
               ) -> JSONResponse:
-    return JSONResponse(store.stats())
+    data = store.stats()
+    data["blast"] = store.blast_status()
+    return JSONResponse(data)
 
 
 @app.get("/api/verdicts")
 def api_verdicts(request: Request, limit: int = 50,
                  _auth: None = Depends(_require_token)) -> JSONResponse:
-    return JSONResponse(store.list_verdicts(min(limit, 200)))
+    return JSONResponse(store.list_verdicts(max(1, min(limit, 200))))
 
 
 @app.get("/api/verdicts/{email_id}")
 def api_verdict(request: Request, email_id: str,
                 _auth: None = Depends(_require_token)) -> JSONResponse:
+    if not email_id or len(email_id) > 128 or any(
+            ord(c) < 32 for c in email_id):
+        raise HTTPException(status_code=400, detail="invalid email_id")
     v = store.get_verdict(email_id)
     if v is None:
         raise HTTPException(status_code=404, detail="unknown email_id")
     return JSONResponse(v)
+
+
+@app.get("/api/verdicts/{email_id}/abuse-report")
+def api_abuse_report(request: Request, email_id: str,
+                     _auth: None = Depends(_require_token)
+                     ) -> JSONResponse:
+    """Ready-to-send takedown report for one verdict.
+
+    Uses the RAW (unredacted) record — a masked sender is useless in an
+    abuse report. Same token auth as every other route.
+    """
+    if not email_id or len(email_id) > 128 or any(
+            ord(c) < 32 for c in email_id):
+        raise HTTPException(status_code=400, detail="invalid email_id")
+    v = store.get_verdict(email_id, raw=True)
+    if v is None:
+        raise HTTPException(status_code=404, detail="unknown email_id")
+    from ..abuse import build_abuse_report
+    from ..graph.store import ThreatGraph
+    infra = ThreatGraph().infra_for(email_id)
+    return JSONResponse({"email_id": email_id,
+                         "markdown": build_abuse_report(email_id, v, infra)})
 
 
 @app.get("/api/action-plans")
