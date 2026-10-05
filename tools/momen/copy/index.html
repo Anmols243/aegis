@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AEGIS — live threat-intel dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="bgpaths" aria-hidden="true">
+  <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+    <path d="M -140 231 C 220 236, 480 191, 720 198 S 1180 213, 1580 213" pathLength="1" stroke="#3ddc97" stroke-width="1.4" stroke-dasharray="0.39 0.61" stroke-dashoffset="0" data-dur="17.0" data-o0="0.1" data-o1="0.22" />
+    <path d="M -140 183 C 220 156, 480 125, 720 119 S 1180 84, 1580 259" pathLength="1" stroke="#3ddc97" stroke-width="0.87" stroke-dasharray="0.42 0.58" stroke-dashoffset="0" data-dur="13.1" data-o0="0.1" data-o1="0.22" />
+    <path d="M -140 660 C 220 610, 480 706, 720 599 S 1180 655, 1580 592" pathLength="1" stroke="#d9ff3d" stroke-width="1.05" stroke-dasharray="0.21 0.79" stroke-dashoffset="0" data-dur="13.0" data-o0="0.14" data-o1="0.3" />
+    <path d="M -140 558 C 220 501, 480 576, 720 614 S 1180 611, 1580 517" pathLength="1" stroke="#d9ff3d" stroke-width="1.54" stroke-dasharray="0.24 0.76" stroke-dashoffset="0" data-dur="21.6" data-o0="0.14" data-o1="0.3" />
+    <path d="M -140 -38 C 220 -79, 480 -21, 720 56 S 1180 -87, 1580 -80" pathLength="1" stroke="#ffffff" stroke-width="1.54" stroke-dasharray="0.2 0.80" stroke-dashoffset="0" data-dur="16.4" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 133 C 220 128, 480 179, 720 104 S 1180 118, 1580 149" pathLength="1" stroke="#3ddc97" stroke-width="1.36" stroke-dasharray="0.36 0.64" stroke-dashoffset="0" data-dur="20.8" data-o0="0.1" data-o1="0.22" />
+    <path d="M -140 523 C 220 497, 480 549, 720 545 S 1180 500, 1580 509" pathLength="1" stroke="#ffffff" stroke-width="1.74" stroke-dasharray="0.33 0.67" stroke-dashoffset="0" data-dur="11.8" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 568 C 220 645, 480 482, 720 557 S 1180 653, 1580 534" pathLength="1" stroke="#ffffff" stroke-width="0.79" stroke-dasharray="0.25 0.75" stroke-dashoffset="0" data-dur="16.9" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 340 C 220 310, 480 312, 720 298 S 1180 290, 1580 369" pathLength="1" stroke="#3ddc97" stroke-width="1.08" stroke-dasharray="0.27 0.73" stroke-dashoffset="0" data-dur="15.3" data-o0="0.1" data-o1="0.22" />
+    <path d="M -140 350 C 220 360, 480 267, 720 270 S 1180 351, 1580 415" pathLength="1" stroke="#ffffff" stroke-width="1.07" stroke-dasharray="0.36 0.64" stroke-dashoffset="0" data-dur="21.4" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 420 C 220 415, 480 373, 720 475 S 1180 332, 1580 452" pathLength="1" stroke="#ffffff" stroke-width="1.28" stroke-dasharray="0.32 0.68" stroke-dashoffset="0" data-dur="15.6" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 884 C 220 867, 480 985, 720 805 S 1180 1026, 1580 697" pathLength="1" stroke="#ffffff" stroke-width="1.62" stroke-dasharray="0.25 0.75" stroke-dashoffset="0" data-dur="18.9" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 443 C 220 534, 480 518, 720 443 S 1180 348, 1580 402" pathLength="1" stroke="#ffffff" stroke-width="0.9" stroke-dasharray="0.41 0.59" stroke-dashoffset="0" data-dur="19.6" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 82 C 220 7, 480 90, 720 44 S 1180 47, 1580 34" pathLength="1" stroke="#ffffff" stroke-width="1.46" stroke-dasharray="0.31 0.69" stroke-dashoffset="0" data-dur="14.7" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 261 C 220 193, 480 287, 720 191 S 1180 314, 1580 321" pathLength="1" stroke="#ffffff" stroke-width="0.93" stroke-dasharray="0.31 0.69" stroke-dashoffset="0" data-dur="13.1" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 881 C 220 917, 480 898, 720 832 S 1180 891, 1580 831" pathLength="1" stroke="#d9ff3d" stroke-width="1.62" stroke-dasharray="0.21 0.79" stroke-dashoffset="0" data-dur="12.2" data-o0="0.14" data-o1="0.3" />
+    <path d="M -140 280 C 220 220, 480 227, 720 299 S 1180 241, 1580 225" pathLength="1" stroke="#ffffff" stroke-width="1.55" stroke-dasharray="0.22 0.78" stroke-dashoffset="0" data-dur="19.2" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 341 C 220 396, 480 296, 720 436 S 1180 396, 1580 289" pathLength="1" stroke="#ffffff" stroke-width="0.99" stroke-dasharray="0.23 0.77" stroke-dashoffset="0" data-dur="11.4" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 169 C 220 217, 480 290, 720 179 S 1180 118, 1580 164" pathLength="1" stroke="#ffffff" stroke-width="1.74" stroke-dasharray="0.38 0.62" stroke-dashoffset="0" data-dur="20.4" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 522 C 220 575, 480 486, 720 542 S 1180 572, 1580 495" pathLength="1" stroke="#3ddc97" stroke-width="1.51" stroke-dasharray="0.29 0.71" stroke-dashoffset="0" data-dur="16.4" data-o0="0.1" data-o1="0.22" />
+    <path d="M -140 -7 C 220 -44, 480 13, 720 -133 S 1180 79, 1580 -130" pathLength="1" stroke="#d9ff3d" stroke-width="1.53" stroke-dasharray="0.37 0.63" stroke-dashoffset="0" data-dur="10.9" data-o0="0.14" data-o1="0.3" />
+    <path d="M -140 91 C 220 66, 480 42, 720 49 S 1180 89, 1580 137" pathLength="1" stroke="#ffffff" stroke-width="0.92" stroke-dasharray="0.36 0.64" stroke-dashoffset="0" data-dur="11.4" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 897 C 220 975, 480 925, 720 819 S 1180 861, 1580 834" pathLength="1" stroke="#ffffff" stroke-width="1.77" stroke-dasharray="0.21 0.79" stroke-dashoffset="0" data-dur="17.3" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 622 C 220 570, 480 609, 720 645 S 1180 673, 1580 610" pathLength="1" stroke="#ffffff" stroke-width="1.58" stroke-dasharray="0.27 0.73" stroke-dashoffset="0" data-dur="12.4" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 749 C 220 733, 480 715, 720 785 S 1180 719, 1580 718" pathLength="1" stroke="#3ddc97" stroke-width="1.53" stroke-dasharray="0.41 0.59" stroke-dashoffset="0" data-dur="19.3" data-o0="0.1" data-o1="0.22" />
+    <path d="M -140 505 C 220 516, 480 510, 720 484 S 1180 513, 1580 506" pathLength="1" stroke="#d9ff3d" stroke-width="1.54" stroke-dasharray="0.33 0.67" stroke-dashoffset="0" data-dur="14.9" data-o0="0.14" data-o1="0.3" />
+    <path d="M -140 290 C 220 274, 480 294, 720 323 S 1180 297, 1580 313" pathLength="1" stroke="#ffffff" stroke-width="0.97" stroke-dasharray="0.22 0.78" stroke-dashoffset="0" data-dur="10.6" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 805 C 220 767, 480 873, 720 777 S 1180 770, 1580 864" pathLength="1" stroke="#d9ff3d" stroke-width="1.49" stroke-dasharray="0.39 0.61" stroke-dashoffset="0" data-dur="11.5" data-o0="0.14" data-o1="0.3" />
+    <path d="M -140 922 C 220 897, 480 856, 720 1006 S 1180 945, 1580 886" pathLength="1" stroke="#ffffff" stroke-width="0.7" stroke-dasharray="0.38 0.62" stroke-dashoffset="0" data-dur="12.3" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 420 C 220 355, 480 450, 720 499 S 1180 457, 1580 426" pathLength="1" stroke="#ffffff" stroke-width="1.08" stroke-dasharray="0.26 0.74" stroke-dashoffset="0" data-dur="17.6" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 364 C 220 353, 480 343, 720 338 S 1180 421, 1580 429" pathLength="1" stroke="#ffffff" stroke-width="1.68" stroke-dasharray="0.21 0.79" stroke-dashoffset="0" data-dur="11.7" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 335 C 220 399, 480 405, 720 305 S 1180 315, 1580 396" pathLength="1" stroke="#ffffff" stroke-width="1.18" stroke-dasharray="0.36 0.64" stroke-dashoffset="0" data-dur="16.8" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 120 C 220 169, 480 112, 720 120 S 1180 121, 1580 142" pathLength="1" stroke="#d9ff3d" stroke-width="1.42" stroke-dasharray="0.34 0.66" stroke-dashoffset="0" data-dur="18.3" data-o0="0.14" data-o1="0.3" />
+    <path d="M -140 119 C 220 69, 480 170, 720 74 S 1180 173, 1580 60" pathLength="1" stroke="#ffffff" stroke-width="1.53" stroke-dasharray="0.37 0.63" stroke-dashoffset="0" data-dur="14.6" data-o0="0.07" data-o1="0.16" />
+    <path d="M -140 134 C 220 151, 480 166, 720 114 S 1180 126, 1580 103" pathLength="1" stroke="#d9ff3d" stroke-width="1.58" stroke-dasharray="0.25 0.75" stroke-dashoffset="0" data-dur="11.1" data-o0="0.14" data-o1="0.3" />
+    <path d="M -140 395 C 220 417, 480 380, 720 402 S 1180 412, 1580 354" pathLength="1" stroke="#ffffff" stroke-width="1.13" stroke-dasharray="0.25 0.75" stroke-dashoffset="0" data-dur="13.6" data-o0="0.07" data-o1="0.16" />
+  </svg>
+</div>
+
+<nav class="rail glass" aria-label="Sections">
+  <div class="rail-word">A.</div>
+  <button class="railbtn active" data-target="feed" aria-label="Feed">F</button>
+  <button class="railbtn" data-target="campaigns" aria-label="Campaigns">C</button>
+  <button class="railbtn" data-target="redteam" aria-label="Red team">R</button>
+</nav>
+
+<main class="content">
+  <header class="topbar">
+    <div class="wordmark">AEGIS<span>.</span></div>
+    <div class="top-right">
+      <span class="refreshed" id="refreshed">LAST REFRESH &middot; &mdash;</span>
+      <button class="motionbtn glass" id="motionbtn"><span class="mdot"></span>Motion</button>
+      <span class="livebadge glass" id="livebadge"><span class="dot"></span><span id="liveText">LIVE</span></span>
+    </div>
+  </header>
+
+  <section class="strip">
+    <div class="eyebrow">TRY IT LIVE</div>
+    <div class="steps">
+      <p><b>01&nbsp;&nbsp;/&nbsp;&nbsp;FORWARD</b><span>&middot;</span> Forward a suspicious email to the AEGIS inbox.</p>
+      <p><b>02&nbsp;&nbsp;/&nbsp;&nbsp;ANALYZE</b><span>&middot;</span> Agents dissect it in about 30 seconds.</p>
+      <p><b>03&nbsp;&nbsp;/&nbsp;&nbsp;VERDICT</b><span>&middot;</span> The verdict lands here when analysis completes.</p>
+    </div>
+    <button class="copybtn" id="copyInbox">COPY INBOX ADDRESS</button>
+  </section>
+
+  <section class="stats" id="stats">
+    <div class="stat"><div class="s-label">TOTAL ANALYZED</div><div class="s-value" id="stTotal">00</div><div class="s-note" id="stTotalNote">&nbsp;</div></div>
+    <div class="stat"><div class="s-label">SCAM</div><div class="s-value" id="stScam">00</div><div class="s-note">confirmed verdict</div></div>
+    <div class="stat"><div class="s-label">SUSPICIOUS</div><div class="s-value" id="stSusp">00</div><div class="s-note">needs a look</div></div>
+    <div class="stat"><div class="s-label">LIKELY SAFE</div><div class="s-value" id="stSafe">00</div><div class="s-note">likely legitimate</div></div>
+  </section>
+
+  <section class="controls" id="feed">
+    <div class="chips" id="chips">
+      <button class="chip active" data-f="ALL">All</button>
+      <button class="chip" data-f="SCAM">SCAM</button>
+      <button class="chip" data-f="SUSPICIOUS">Suspicious</button>
+      <button class="chip" data-f="LIKELY_SAFE">Safe</button>
+    </div>
+    <input class="search" id="search" type="search" placeholder="Search sender or subject&hellip;  ( / )" autocomplete="off">
+  </section>
+
+  <section class="mailwrap">
+    <div class="maillist">
+      <div class="eyebrow">ANALYZED EMAILS</div>
+      <div class="rows" id="rows"></div>
+      <div class="mailcount" id="mailcount"></div>
+    </div>
+    <article class="reader" id="reader"></article>
+  </section>
+
+  <section class="campaigns" id="campaigns">
+    <h2>Threat campaigns</h2>
+    <p class="explainer">When separate emails share infrastructure &mdash; domains, senders, or URLs &mdash; the system links them into a campaign.</p>
+    <div id="campaignCards"></div>
+  </section>
+
+  <section class="redteam" id="redteam">
+    <h2>Red team</h2>
+    <p class="explainer">Adversarial mutations of real scams, replayed against the pipeline as regression tests.</p>
+    <div class="redstats" id="redstats"></div>
+    <p class="honesty" id="honesty"></p>
+    <p class="axes" id="axes"></p>
+    <div id="redcases"></div>
+  </section>
+
+  <footer class="foot">AEGIS &middot; multi-agent scam defense &middot; evidence-backed verdicts</footer>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
