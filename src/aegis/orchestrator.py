@@ -26,6 +26,7 @@ MAX_SANDBOX_URLS = 5
 @dataclass
 class AnalysisResult:
     email_id: str
+    triage_degraded: bool = False
     triage: triage_mod.TriageResult | None = None
     signals: SignalReport | None = None
     forensic: ForensicReport | None = None
@@ -57,12 +58,20 @@ def analyze_email(email_id: str, raw_body: str, headers: str = "",
                   agentboxd_scores: dict | None = None) -> AnalysisResult:
     res = AnalysisResult(email_id=email_id)
 
-    # Stage 1 — triage: always on. If the LLM is unreachable, this raises and
-    # the caller (webhook) logs it; nothing is sent to the user.
+    # Stage 1 — triage. If the LLM is unreachable after retries, fall back
+    # to deterministic entity extraction: lower recall, but the pipeline
+    # still produces a (fail-closed) verdict instead of nothing.
     t0 = time.time()
-    res.triage = triage_mod.triage(raw_body, headers)
+    try:
+        res.triage = triage_mod.triage(raw_body, headers)
+    except Exception as e:  # noqa: BLE001 — degraded, not dead
+        print(f"[aegis] triage LLM failed, deterministic fallback: {e}",
+              file=sys.stderr)
+        res.triage = triage_mod.triage_fallback(raw_body, headers)
+        res.triage_degraded = True
     res.stage_timings["triage"] = {"seconds": round(time.time() - t0, 2),
-                                   "ok": True}
+                                   "ok": True,
+                                   "degraded": res.triage_degraded}
 
     # Stage 1b — deterministic security signals: pure functions over the
     # artifact, no LLM. These are VERIFIED FACTS the forensic analyst
@@ -96,16 +105,37 @@ def analyze_email(email_id: str, raw_body: str, headers: str = "",
         jobs["sandbox"] = (inspect_urls,
                            (res.triage.urls[:MAX_SANDBOX_URLS],), {})
 
-    with concurrent.futures.ThreadPoolExecutor(
-            max_workers=len(jobs)) as pool:
+    # Per-stage deadline: a hung stage (network stall beyond its own
+    # timeouts, wedged subprocess) degrades to None instead of wedging the
+    # whole analysis. The arbiter fails closed on missing signals.
+    # The pool is shut down without waiting: a hung thread must never
+    # block the verdict path.
+    STAGE_TIMEOUT_S = 600
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=len(jobs))
+    try:
         futures = {pool.submit(_timed, name, fn, *a, **k): name
                    for name, (fn, a, k) in jobs.items()}
-        results = {}
-        for fut in concurrent.futures.as_completed(futures):
-            name = futures[fut]
-            result, timing = fut.result()
+        results: dict = {}
+        deadline = time.monotonic() + STAGE_TIMEOUT_S
+        for fut, name in futures.items():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                results[name] = None
+                res.stage_timings[name] = {"seconds": STAGE_TIMEOUT_S,
+                                           "ok": False,
+                                           "error": "stage timeout"}
+                continue
+            try:
+                result, timing = fut.result(timeout=remaining)
+            except concurrent.futures.TimeoutError:
+                result, timing = None, {"seconds": STAGE_TIMEOUT_S,
+                                        "ok": False, "error": "stage timeout"}
+                print(f"[aegis] stage '{name}' timed out, degrading",
+                      file=sys.stderr)
             results[name] = result
             res.stage_timings[name] = timing
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
 
     res.forensic = results.get("forensic")
     res.vision = results.get("vision")
@@ -161,6 +191,9 @@ def analyze_email(email_id: str, raw_body: str, headers: str = "",
         red_flags=flags[:6],
         action_plan=DEFAULT_ACTION_PLANS[res.verdict.label],
         campaign_note=res.campaign_note,
+        system_note=("Triage ran in deterministic fallback mode (LLM "
+                     "unreachable); verdict is conservative."
+                     if res.triage_degraded else ""),
     )
     res.card_markdown = render(card)
     return res

@@ -1034,5 +1034,161 @@ class TestDeterministicDemo(unittest.TestCase):
                 f"finding not grounded: {f['claim'][:40]}")
 
 
+# ---------------------------------------------------------------------------
+# Backend hardening: rate limiter
+# ---------------------------------------------------------------------------
+
+class TestRateLimit(unittest.TestCase):
+    def test_burst_then_429(self):
+        from aegis.middleware import RateLimitMiddleware
+        mw = RateLimitMiddleware(None, rate=60.0, per_seconds=60.0, burst=3)
+        ok, _ = mw._allowed("k")
+        self.assertTrue(ok)
+        ok, _ = mw._allowed("k")
+        self.assertTrue(ok)
+        ok, _ = mw._allowed("k")
+        self.assertTrue(ok)
+        ok, retry = mw._allowed("k")
+        self.assertFalse(ok)
+        self.assertGreater(retry, 0)
+
+    def test_keys_are_independent(self):
+        from aegis.middleware import RateLimitMiddleware
+        mw = RateLimitMiddleware(None, rate=60.0, per_seconds=60.0, burst=1)
+        self.assertTrue(mw._allowed("a")[0])
+        self.assertFalse(mw._allowed("a")[0])
+        self.assertTrue(mw._allowed("b")[0])
+
+
+# ---------------------------------------------------------------------------
+# Backend hardening: deterministic triage fallback
+# ---------------------------------------------------------------------------
+
+class TestTriageFallback(unittest.TestCase):
+    def test_extracts_entities_without_llm(self):
+        from aegis.agents.triage import triage_fallback
+        r = triage_fallback(
+            "Click https://paypa1-secure.com/verify now",
+            "From: Support <support@paypa1-secure.com>\n"
+            "Reply-To: x@evil.example\n")
+        self.assertEqual(r.sender, "Support <support@paypa1-secure.com>")
+        self.assertEqual(r.reply_to, "x@evil.example")
+        self.assertEqual(r.urls, ["https://paypa1-secure.com/verify"])
+        self.assertEqual(r.domains, ["paypa1-secure.com"])
+
+    def test_empty_input_is_safe(self):
+        from aegis.agents.triage import triage_fallback
+        r = triage_fallback("", "")
+        self.assertEqual(r.urls, [])
+        self.assertEqual(r.domains, [])
+
+
+# ---------------------------------------------------------------------------
+# Feature: brand impersonation radar
+# ---------------------------------------------------------------------------
+
+class TestBrandRadar(unittest.TestCase):
+    def test_flags_typosquats(self):
+        from aegis.agents.signals import check_brand_impersonation
+        for dom, brand in [("paypa1-secure.com", "paypal"),
+                           ("micros0ft-login.net", "microsoft"),
+                           ("amaz0n-billing.org", "amazon"),
+                           ("apple-support.net", "apple")]:
+            sigs = check_brand_impersonation("x@" + dom, [dom], [])
+            self.assertTrue(sigs, f"missed {dom}")
+            self.assertEqual(sigs[0].severity, "high")
+            self.assertIn(brand, sigs[0].detail)
+
+    def test_passes_legitimate(self):
+        from aegis.agents.signals import check_brand_impersonation
+        for dom in ["paypal.com", "mail.paypal.com", "amazonaws.com",
+                    "example.com", "secure-login-example.org"]:
+            sigs = check_brand_impersonation("x@" + dom, [dom], [])
+            self.assertEqual(sigs, [], f"false positive on {dom}")
+
+    def test_sender_domain_is_checked(self):
+        from aegis.agents.signals import check_brand_impersonation
+        sigs = check_brand_impersonation("billing@paypa1-secure.com", [], [])
+        self.assertTrue(sigs)
+
+
+# ---------------------------------------------------------------------------
+# Feature: abuse-report generator
+# ---------------------------------------------------------------------------
+
+class TestAbuseReport(unittest.TestCase):
+    def _verdict(self):
+        return {
+            "email_id": "rt-test-1", "sender": "x@paypa1-secure.com",
+            "label": "SCAM", "confidence": 0.8, "score": 0.75,
+            "received_at": "2026-10-06T00:00:00+00:00",
+            "red_flags": [{"title": "Lookalike domain",
+                           "evidence": "paypa1-secure.com"}],
+            "det_signals": [{"name": "brand-impersonation",
+                             "severity": "high",
+                             "detail": "typosquat of paypal",
+                             "evidence": "paypa1-secure.com"}],
+            "campaign_note": "",
+        }
+
+    def test_report_has_iocs_and_recipients(self):
+        from aegis.abuse import build_abuse_report
+        md = build_abuse_report(
+            "rt-test-1", self._verdict(),
+            {"domain": ["paypa1-secure.com"],
+             "url": ["http://paypa1-secure.com/verify"]})
+        self.assertIn("# AEGIS abuse report", md)
+        self.assertIn("paypa1-secure.com", md)
+        self.assertIn("abuse@paypa1-secure.com", md)
+        self.assertIn("typosquat of paypal", md)
+
+    def test_empty_verdict_still_renders(self):
+        from aegis.abuse import build_abuse_report
+        md = build_abuse_report("x", {"label": "SCAM"})
+        self.assertIn("# AEGIS abuse report", md)
+        self.assertIn("_(no network indicators extracted)_", md)
+
+
+# ---------------------------------------------------------------------------
+# Feature: blast detector
+# ---------------------------------------------------------------------------
+
+class TestBlastDetector(unittest.TestCase):
+    def _db_with(self, n_recent, n_old=0):
+        import sqlite3
+        from datetime import datetime, timedelta, timezone
+        from aegis.dashboard import store
+        d = tempfile.mkdtemp()
+        path = os.path.join(d, "dash.db")
+        conn = store._connect(path)
+        now = datetime.now(timezone.utc)
+        for i in range(n_recent):
+            conn.execute(
+                "INSERT INTO verdicts (email_id, received_at, label) "
+                "VALUES (?, ?, 'scam')",
+                (f"r{i}", (now - timedelta(minutes=i)).isoformat()))
+        for i in range(n_old):
+            conn.execute(
+                "INSERT INTO verdicts (email_id, received_at, label) "
+                "VALUES (?, ?, 'safe')",
+                (f"o{i}", (now - timedelta(hours=2)).isoformat()))
+        conn.commit()
+        conn.close()
+        return path
+
+    def test_alert_on_burst(self):
+        from aegis.dashboard.store import blast_status
+        st = blast_status(self._db_with(6))
+        self.assertTrue(st["alert"])
+        self.assertEqual(st["count"], 6)
+        self.assertEqual(st["flagged"], 6)
+
+    def test_quiet_when_below_threshold(self):
+        from aegis.dashboard.store import blast_status
+        st = blast_status(self._db_with(2, n_old=10))
+        self.assertFalse(st["alert"])
+        self.assertEqual(st["count"], 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

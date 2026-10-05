@@ -20,6 +20,7 @@ class VerdictCard:
     red_flags: list[RedFlag] = field(default_factory=list)
     action_plan: list[str] = field(default_factory=list)
     campaign_note: str = ""
+    system_note: str = ""  # pipeline health notices (degraded mode, etc.)
 
 
 def render(card: VerdictCard) -> str:
@@ -30,6 +31,9 @@ def render(card: VerdictCard) -> str:
         f"Confidence `{bar}` {v.confidence:.0%} · score {v.score:.2f}",
         "",
     ]
+    if card.system_note:
+        lines.append(f"_\u26a0\ufe0f {card.system_note}_")
+        lines.append("")
     if card.red_flags:
         lines.append("**Red flags**")
         for f in card.red_flags:
