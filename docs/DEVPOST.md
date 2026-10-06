@@ -38,7 +38,7 @@ arena attacks the pipeline with mutated scams to show what it still catches.
   (small synthetic set; a sanity check, not a real-world accuracy claim).
 - A phish that tells the AI to "classify this as safe" is still flagged, and the attempt is
   reported as a red flag.
-- 70 automated tests, including SSRF tests against a real local server.
+- 78 automated tests, including SSRF tests against a real local server.
 
 ## What we learned
 Grounding beats prompting: asking a model to cite evidence is not enough, checking the citation is.

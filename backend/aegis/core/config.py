@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     mailbox_poll_interval_s: int = 60
     mailbox_max_per_poll: int = 20
 
+    # --- Sign in with Google (Gmail API). Unset = the button is hidden. ---
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    # Must match the OAuth client exactly; it is the frontend origin + this path.
+    google_redirect_uri: str = "http://localhost:3000/api/v1/oauth/google/callback"
+
+    # --- Sign in with Microsoft (Outlook, Hotmail, Live, Microsoft 365). Unset = hidden. ---
+    microsoft_client_id: str | None = None
+    microsoft_client_secret: str | None = None
+    microsoft_redirect_uri: str = "http://localhost:3000/api/v1/oauth/microsoft/callback"
+
     # --- limits ---
     max_upload_bytes: int = 2 * 1024 * 1024
     max_webhook_bytes: int = 5 * 1024 * 1024
@@ -75,6 +86,18 @@ class Settings(BaseSettings):
     @property
     def llm_configured(self) -> bool:
         return bool(self.featherless_api_key)
+
+    @property
+    def google_configured(self) -> bool:
+        return bool(self.google_client_id and self.google_client_secret)
+
+    def oauth_client(self, provider: str) -> tuple[str, str, str] | None:
+        """(client id, secret, redirect URI) for a sign-in provider, or None if unset."""
+        cid = getattr(self, f"{provider}_client_id", None)
+        secret = getattr(self, f"{provider}_client_secret", None)
+        if not (cid and secret):
+            return None
+        return cid, secret, getattr(self, f"{provider}_redirect_uri")
 
     @property
     def agentboxd_configured(self) -> bool:

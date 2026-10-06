@@ -126,7 +126,12 @@ elsewhere. It never moves, deletes or sends mail. The owner's own address is rep
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| GET | `/mailbox-providers` | | `[{"id": "gmail", "name": "Gmail", "host": "imap.gmail.com", "port": 993, "app_password_url": "...", "steps": ["..."], "supported": true}]` (outlook listed with `supported: false` and a reason) |
+| POST | `/oauth/google/start` | `{"retention_days": 1\|7\|30}` | `{"url", "state", "pair"}`: open `url` in a new tab, show `pair`. 503 when Google is not configured, 403 without a viewer |
+| GET | `/oauth/google/status?state=` | | Starting viewer only (else 404): `{"status": "pending\|exchanging\|confirm\|saving\|connected\|cancelled\|error\|expired", "email", "error"}` |
+| GET | `/oauth/google/callback` | Google's `code`, `state` or `error` | 303 to `/inbox?google=connected` (same browser), `/connect/google?state=` (other browser), or `/inbox?google_error=<message>` |
+| GET | `/oauth/google/pairing?state=` | | `{"status", "email", "pair", "error"}` for the confirmation page; 404 when not waiting |
+| POST | `/oauth/google/confirm` | `{"state", "connect": true\|false}` | `{"status": "connected", "email"}` (attached to the starting viewer) or `{"status": "cancelled"}` (token revoked); 409 when not waiting |
+| GET | `/mailbox-providers` | | First entry `{"id": "google", "oauth": true, "supported": <configured>}`, then `[{"id": "gmail", "name": "Gmail", "host": "imap.gmail.com", "port": 993, "app_password_url": "...", "steps": ["..."], "supported": true}]` (outlook listed with `supported: false` and a reason) |
 | POST | `/mailboxes` | `{"provider": "gmail", "email": "...", "app_password": "...", "host": "only for custom", "retention_days": 7}` | `201 Mailbox`; 400 with a readable `detail` if login fails; 403 without a viewer |
 | GET | `/mailboxes` | | `[Mailbox]` (this viewer's only) |
 | POST | `/mailboxes/{id}/check` | | `202` poll now |

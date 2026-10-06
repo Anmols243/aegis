@@ -14,7 +14,7 @@ export default function InboxPage() {
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">Connect your inbox</h1>
         <p className="mt-3 text-muted-foreground">
           AEGIS checks every new email in the background and labels the scams for you, with the same evidence-cited verdict you get when you paste
-          one in. Gmail, Yahoo, iCloud and most other providers work.
+          one in. Sign in with Google (Gmail) or Microsoft (Outlook, Hotmail, Microsoft 365); AEGIS never sees your password.
         </p>
       </div>
 

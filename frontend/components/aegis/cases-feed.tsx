@@ -16,10 +16,10 @@ const FILTERS: { key: Label | null; text: string }[] = [
   { key: "LIKELY_SAFE", text: "Safe" },
 ]
 
-export function CasesFeed() {
+export function CasesFeed({ initialMine = false }: { initialMine?: boolean }) {
   const [label, setLabel] = React.useState<Label | null>(null)
-  const [mine, setMine] = React.useState(false)
-  const [mineReady, setMineReady] = React.useState(false)
+  // /cases?mine=true (linked from the Inbox page) opens with the Mine filter on.
+  const [mine, setMine] = React.useState(initialMine)
   const [query, setQuery] = React.useState("")
   const [q, setQ] = React.useState("")
   const [items, setItems] = React.useState<AnalysisSummary[] | null>(null)
@@ -28,12 +28,6 @@ export function CasesFeed() {
   const [loadingMore, setLoadingMore] = React.useState(false)
   const [attempt, setAttempt] = React.useState(0)
 
-  // /cases?mine=true (linked from the Inbox page) opens with the Mine filter on.
-  React.useEffect(() => {
-    setMine(new URLSearchParams(window.location.search).get("mine") === "true")
-    setMineReady(true)
-  }, [])
-
   // Debounce the search box.
   React.useEffect(() => {
     const t = window.setTimeout(() => setQ(query.trim()), 300)
@@ -41,7 +35,6 @@ export function CasesFeed() {
   }, [query])
 
   React.useEffect(() => {
-    if (!mineReady) return
     let alive = true
     api
       .listAnalyses({ limit: 20, label, q, mine })
@@ -55,7 +48,7 @@ export function CasesFeed() {
     return () => {
       alive = false
     }
-  }, [label, q, mine, mineReady, attempt])
+  }, [label, q, mine, attempt])
 
   const loadMore = async () => {
     if (!cursor) return

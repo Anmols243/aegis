@@ -9,7 +9,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import (FileResponse, JSONResponse, RedirectResponse,
+                               StreamingResponse)
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
@@ -21,6 +22,7 @@ from ..core.security import limit_general, limit_submit, require_api_key
 from ..core.viewer import require_viewer, viewer_hash
 from ..db.models import Analysis, AuditEvent, Mailbox, RedteamRun
 from ..db.session import session_scope
+from ..providers import oauth
 from ..providers.agentboxd import message_scores, message_to_raw, verify_signature
 from ..services import abuse, campaigns, mailboxes, redteam
 from ..services import analysis as svc
@@ -375,20 +377,87 @@ async def redteam_summary() -> dict:
 
 @private.get("/mailbox-providers")
 async def mailbox_providers() -> list[dict]:
-    from ..providers.imap import PROVIDERS
-    return PROVIDERS
+    return mailboxes.provider_list()
 
 
-@private.post("/mailboxes", status_code=201, dependencies=[Depends(limit_submit)])
-async def connect_mailbox(request: Request) -> dict:
+@private.post("/oauth/{provider}/start", dependencies=[Depends(limit_submit)])
+async def oauth_start(provider: str, request: Request) -> dict:
     owner = require_viewer(request)
+    try:
+        payload = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload = {}
+    retention = payload.get("retention_days", 7) if isinstance(payload, dict) else 7
+    return mailboxes.sign_in_start(provider, owner, retention)
+
+
+@private.get("/oauth/status")
+async def oauth_status(request: Request, state: str = "") -> dict:
+    return mailboxes.sign_in_status(state[:128], require_viewer(request))
+
+
+@private.get("/oauth/{provider}/callback")
+async def oauth_callback(provider: str, request: Request, code: str = "", state: str = "",
+                         error: str = "") -> RedirectResponse:
+    """The provider sends the browser here. Always ends with a redirect: to /inbox
+    when this browser started the sign-in, else to the confirmation page."""
+    from urllib.parse import quote
+
+    def back(query: str) -> RedirectResponse:
+        return RedirectResponse(f"/inbox?{query}", status_code=303)
+
+    state = state[:128]
+    if error or not code:
+        try:
+            p = oauth.get_pending(state)
+            if p["status"] == "pending":
+                p["status"], p["error"] = "error", "Sign-in was cancelled."
+        except oauth.OAuthError:
+            pass
+        return back("signin_error=" + quote("Sign-in was cancelled." if error else
+                                            "Sign-in failed. Please try again."))
+    try:
+        outcome = await mailboxes.sign_in_callback(provider, viewer_hash(request),
+                                                   code[:4096], state)
+    except oauth.OAuthError as e:
+        return back("signin_error=" + quote(str(e)))
+    except HTTPException as e:
+        return back("signin_error=" + quote(str(e.detail)))
+    except Exception:  # noqa: BLE001 - network failures talking to the provider
+        log.exception("sign-in failed", extra={"provider": provider[:16]})
+        return back("signin_error=" + quote("Could not reach the sign-in service. Please try "
+                                            "again."))
+    if outcome == "confirm":
+        return RedirectResponse(f"/connect?state={quote(state)}", status_code=303)
+    request.app.state.mailbox_poller.trigger(mailboxes.mailbox_of(state))
+    return back("signin=connected")
+
+
+@private.get("/oauth/pairing")
+async def oauth_pairing(state: str = "") -> dict:
+    try:
+        return mailboxes.sign_in_pairing(state[:128])
+    except oauth.OAuthError as e:
+        raise HTTPException(404, str(e)) from None
+
+
+@private.post("/oauth/confirm", dependencies=[Depends(limit_submit)])
+async def oauth_confirm(request: Request) -> dict:
     try:
         payload = await request.json()
     except (json.JSONDecodeError, UnicodeDecodeError):
         raise HTTPException(400, "expected JSON") from None
     if not isinstance(payload, dict):
         raise HTTPException(422, "expected a JSON object")
-    return await mailboxes.connect(owner, payload)
+    try:
+        mb = await mailboxes.sign_in_confirm(str(payload.get("state", ""))[:128],
+                                             payload.get("connect") is True)
+    except oauth.OAuthError as e:
+        raise HTTPException(404, str(e)) from None
+    if mb is None:
+        return {"status": "cancelled"}
+    request.app.state.mailbox_poller.trigger(mb["id"])
+    return {"status": "connected", "email": mb["email"]}
 
 
 @private.get("/mailboxes")

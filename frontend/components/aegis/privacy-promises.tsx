@@ -12,8 +12,8 @@ export const PRIVACY_PROMISES = [
   },
   {
     icon: Tag,
-    title: "Labels and flags only",
-    text: "It adds an AEGIS label or flag to scams. It never moves, deletes, forwards or sends mail.",
+    title: "Tags only",
+    text: "It adds an AEGIS label (Gmail) or category (Outlook) to scams. It never moves, deletes, forwards or sends mail.",
   },
   {
     icon: MailCheck,
@@ -22,8 +22,8 @@ export const PRIVACY_PROMISES = [
   },
   {
     icon: KeyRound,
-    title: "Encrypted app password",
-    text: "Stored encrypted at rest (AES-256-GCM) and never shown again, not even to you.",
+    title: "Encrypted credentials",
+    text: "You sign in with Google or Microsoft, so AEGIS never sees your password. Its token is encrypted at rest (AES-256-GCM) and never shown again.",
   },
   {
     icon: UserRoundX,

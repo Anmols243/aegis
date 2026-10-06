@@ -58,3 +58,39 @@ Append-only. A superseded decision gets a new entry; old entries are not rewritt
 - **Decision:** `validate.prose()` normalises em and en dashes in model-written claims and summaries
   (house style). Quoted excerpts are never altered, because they must match the email to be
   grounded and highlighted.
+
+## D8 (Oct 6, 2026): Mailbox access over IMAP with app passwords
+
+- **Context:** Users want AEGIS to watch their inbox. Gmail OAuth in testing mode only admits listed
+  test users, so judges could not connect their own accounts; Microsoft requires OAuth for Outlook.com.
+- **Decision:** IMAP over TLS with app passwords (Gmail, Yahoo, iCloud, custom). Read-only fetch
+  (`BODY.PEEK`), labels and flags only, new mail only. Outlook listed as unsupported with the reason.
+- **Consequences:** Works with most providers without a cloud project. Credentials must be stored, so
+  they are encrypted (D9). OAuth providers are future work.
+
+## D9 (Oct 6, 2026): Private by default, unlisted not authenticated
+
+- **Context:** The public deployment has no user accounts, yet pasted and mailbox emails are personal.
+- **Decision:** A per-browser random viewer token (HttpOnly cookie via the proxy). Private analyses
+  are listed only to their owner and otherwise reachable only by an unguessable id or share link.
+  Cross-user threat intel is kept but anonymised. Content is purged after a retention period.
+- **Consequences:** No login friction for judges. Clearing cookies loses the "mine" list (the
+  analyses still exist until retention). Anyone holding a link can open that one analysis.
+
+## D10 (Oct 6, 2026): Sign in with Google for Gmail (amends D8)
+
+- **Context:** App passwords proved too hard in practice: Google hides them unless 2-Step
+  Verification is on (a teammate's account showed "not available for your account").
+- **Decision:** Add Sign in with Google (OAuth code flow with PKCE, `gmail.modify`, Gmail API) as the
+  primary Gmail path; keep IMAP app passwords for Yahoo, iCloud, custom and as a Gmail fallback.
+  Publish the OAuth app unverified rather than leave it in Testing, so any Google account (including
+  judges) can sign in.
+- **Consequences:** One click for users. Unverified apps show Google's warning screen and are capped
+  at 100 users; verification of a restricted scope is out of reach for the hackathon. Pending
+  sign-ins are kept in memory (single process).
+- **Amendment (same day):** Google blocks sign-in inside apps' built-in browsers ("This browser or
+  app may not be secure"), where a teammate runs AEGIS. Sign-in now opens in a new tab and may finish
+  in another browser; the mailbox is attached to the starting session only after the user confirms a
+  matching 4-digit code in the browser that holds the Google account. A sign-in link someone else
+  started and sent to a victim would still need the victim to press "Codes match, connect" against a
+  warning; that social-engineering risk is accepted and stated on the page.

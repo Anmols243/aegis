@@ -2,6 +2,35 @@
 
 Newest first.
 
+## 2026-10-06: Sign in with Google for Gmail
+
+- **Changed:** `providers/google.py` (OAuth + PKCE, Gmail history polling, labels, revoke),
+  `/oauth/google/start` and `/oauth/google/callback`, Google-first connect form on `/inbox` with app
+  passwords behind a toggle, privacy copy. See DECISIONS.md D10.
+- **Why:** Google refused to show app passwords for a teammate's account; app passwords were too much
+  friction.
+- **Verified:** 82 backend tests pass (fake Google API: state bound to browser and single use, PKCE,
+  scope check, new-mail-only cursor, sent mail skipped, label + star, encrypted token, revoke on
+  disconnect). Mutation check: breaking each of those 7 guards fails a test. Browser: button opens
+  accounts.google.com with the right parameters; cancel returns to `/inbox` with a toast.
+- **Not verified:** a full consent with a real OAuth client (needs the Google Cloud setup in README).
+- **Follow-up:** sign-in from an app's built-in browser. Google opens in a new tab; if it returns to
+  another browser, `/connect/google` asks to confirm a 4-digit code shown in both windows, and the
+  starting window updates by polling. 84 tests; mutation check: 10 guards, all caught. Browser: two
+  isolated sessions against a fake Google showed matching codes, the confirm page, the panel
+  connecting by itself and the other browser getting nothing; disconnect cleaned up.
+
+## 2026-10-06: Mailbox connection and privacy (v2.1)
+
+- **Changed:** Connect an IMAP mailbox (Gmail, Yahoo, iCloud, custom) with an app password; new mail
+  is analyzed and tagged `AEGIS/Scam` or `AEGIS/Suspicious`. Privacy model: per-browser viewer cookie,
+  private-by-default analyses, anonymised cross-user relations, AES-256-GCM credentials, owner
+  address redaction, retention purge, disconnect-and-delete. See DECISIONS.md D8, D9.
+- **Verified:** 78 backend tests pass (fake IMAP server for connect, poll, label, disconnect;
+  visibility, redaction, retention, encryption). Mutation check: disabling private-list filtering,
+  related redaction, owner redaction, the mailbox owner check or the purge each fails a test.
+  Live backend migrated the existing database in place.
+- **Not verified:** a real Gmail/Yahoo/iCloud mailbox (needs a test account and app password).
 ## 2026-10-06: v2 rewrite (branch `overhaul`)
 
 - **Changed:** New `backend/` (FastAPI async, SQLite queue, DAG pipeline with SSE progress, Featherless

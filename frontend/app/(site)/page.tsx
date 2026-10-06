@@ -95,7 +95,7 @@ export default function LandingPage() {
                 It watches your inbox. It never takes over.
               </h2>
               <p className="mt-3 text-muted-foreground">
-                Connect Gmail, Yahoo, iCloud or any IMAP mailbox with an app password. Every new email is checked in the background and scams get an
+                Sign in with Google or Microsoft and every new email is checked in the background and scams get an
                 AEGIS label, with the full evidence one click away. Privacy is the design, not a setting:
               </p>
             </div>

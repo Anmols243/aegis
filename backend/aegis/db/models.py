@@ -40,7 +40,7 @@ class Analysis(Base):
     raw: Mapped[str] = mapped_column(Text, default="")          # pasted text / .eml source
     raw_html: Mapped[str] = mapped_column(Text, default="")     # html part when delivered separately
     provider_scores: Mapped[dict] = mapped_column(JSON, default=dict)  # AgentBoxD phishing/injection
-    external_id: Mapped[str | None] = mapped_column(String(128), unique=True)
+    external_id: Mapped[str | None] = mapped_column(String(255), unique=True)
     inbox_id: Mapped[str | None] = mapped_column(String(128))
     needs_fetch: Mapped[int] = mapped_column(Integer, default=0)  # envelope-only webhook
 
@@ -66,7 +66,9 @@ class Analysis(Base):
 
 
 class Mailbox(Base):
-    """A connected IMAP mailbox. The app password is stored encrypted only."""
+    """A mailbox linked with Sign in with Google or Microsoft. Only the refresh
+    token is stored, encrypted. `last_uid` holds the provider cursor (Gmail
+    history id, or the newest Outlook received time in epoch seconds)."""
     __tablename__ = "mailboxes"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -76,9 +78,9 @@ class Mailbox(Base):
     email: Mapped[str] = mapped_column(String(320))
     host: Mapped[str] = mapped_column(String(255))
     port: Mapped[int] = mapped_column(Integer, default=993)
-    secret: Mapped[str] = mapped_column(Text)            # AES-GCM ciphertext of the app password
+    secret: Mapped[str] = mapped_column(Text)            # AES-GCM ciphertext of the refresh token
     status: Mapped[str] = mapped_column(String(8), default="active")  # active|paused|error
-    label_mode: Mapped[str] = mapped_column(String(16), default="imap-flags")
+    label_mode: Mapped[str] = mapped_column(String(16), default="gmail-api")
     uidvalidity: Mapped[int | None] = mapped_column(Integer)
     last_uid: Mapped[int] = mapped_column(Integer, default=0)
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

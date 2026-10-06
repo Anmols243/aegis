@@ -14,7 +14,7 @@ Deadline: Devpost locks Oct 10, 2026, 12:00 PM ET.
 
 ```bash
 # backend (from backend/)
-.venv/Scripts/python -m pytest -q -p no:logging      # 70 tests, no network or key needed
+.venv/Scripts/python -m pytest -q -p no:logging      # 84 tests, no network or key needed
 .venv/Scripts/python -m uvicorn aegis.main:app --port 8000
 .venv/Scripts/python scripts/eval_live.py              # real-model eval against a running backend
 

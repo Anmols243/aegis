@@ -3,7 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { CheckCircle2, Copy, ExternalLink, FileWarning, Link2, Loader2, Share2 } from "lucide-react"
+import { CheckCircle2, Copy, ExternalLink, FileWarning, Link2, Loader2, Lock, Share2, Timer } from "lucide-react"
 import { toast } from "sonner"
 
 import { ScoreGauge, SectionTitle, SeverityPill, VerdictBadge } from "@/components/aegis/bits"
@@ -24,6 +24,15 @@ export function VerdictReport({ analysis, mode = "full" }: { analysis: Analysis;
 
   return (
     <div className="flex flex-col gap-6">
+      {mode === "full" && a.visibility === "private" ? (
+        <p role="note" className="flex items-start gap-2.5 rounded-2xl border border-hair bg-surface/80 px-4 py-3 text-sm text-muted-foreground">
+          <Lock className="mt-0.5 size-4 shrink-0 text-lime" aria-hidden="true" />
+          <span>
+            <strong className="font-semibold text-ink">Private:</strong> only people with this link can see it. It never appears in the public feed or
+            the campaign graph.{a.mailbox_id ? " It came from your connected mailbox." : ""}
+          </span>
+        </p>
+      ) : null}
       <BorderBeam className="rounded-[1.5rem]" radius={24} duration={9} colorFrom={meta ? meta.color : "#d9ff3d"}>
         <section className="hud grid gap-6 rounded-[1.5rem] p-5 sm:p-7 md:grid-cols-[auto_1fr] md:items-center" aria-label="Verdict">
           <div className="flex justify-center">
@@ -175,29 +184,39 @@ export function VerdictReport({ analysis, mode = "full" }: { analysis: Analysis;
               {a.campaign.note ? <p className="text-sm text-muted-foreground">{a.campaign.note}</p> : null}
               {a.campaign.related?.length ? (
                 <ul className="mt-3 flex flex-col gap-2">
-                  {a.campaign.related.map((r) => (
-                    <li key={r.analysis_id} className="rounded-xl border border-hair bg-black/25 p-3">
-                      <div className="flex items-center gap-2">
-                        <VerdictBadge label={r.label} />
-                        <span
-                          className={cn(
-                            "font-mono text-[10px] uppercase tracking-[0.14em]",
-                            r.strength === "high" ? "text-scam" : r.strength === "medium" ? "text-susp" : "text-faint",
-                          )}
-                        >
-                          {r.strength} tie
-                        </span>
-                      </div>
-                      {mode === "full" ? (
-                        <Link href={`/cases/${encodeURIComponent(r.analysis_id)}`} className="mt-1.5 block truncate text-sm font-medium text-ink hover:text-lime">
-                          {r.subject || r.analysis_id}
-                        </Link>
-                      ) : (
-                        <p className="mt-1.5 truncate text-sm font-medium text-ink">{r.subject || "Related message"}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">{r.why}</p>
-                    </li>
-                  ))}
+                  {a.campaign.related.map((r, i) =>
+                    r.private || !r.analysis_id ? (
+                      // Someone else's email: the API returns only the strength and reason.
+                      <li key={`private-${i}`} className="flex items-start gap-2.5 rounded-xl border border-dashed border-hair bg-black/15 p-3">
+                        <Lock className="mt-0.5 size-3.5 shrink-0 text-faint" aria-hidden="true" />
+                        <p className="text-sm text-muted-foreground">
+                          A private email shares this infrastructure ({r.strength}, {r.why}).
+                        </p>
+                      </li>
+                    ) : (
+                      <li key={r.analysis_id} className="rounded-xl border border-hair bg-black/25 p-3">
+                        <div className="flex items-center gap-2">
+                          <VerdictBadge label={r.label ?? null} />
+                          <span
+                            className={cn(
+                              "font-mono text-[10px] uppercase tracking-[0.14em]",
+                              r.strength === "high" ? "text-scam" : r.strength === "medium" ? "text-susp" : "text-faint",
+                            )}
+                          >
+                            {r.strength} tie
+                          </span>
+                        </div>
+                        {mode === "full" ? (
+                          <Link href={`/cases/${encodeURIComponent(r.analysis_id)}`} className="mt-1.5 block truncate text-sm font-medium text-ink hover:text-lime">
+                            {r.subject || r.analysis_id}
+                          </Link>
+                        ) : (
+                          <p className="mt-1.5 truncate text-sm font-medium text-ink">{r.subject || "Related message"}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground">{r.why}</p>
+                      </li>
+                    ),
+                  )}
                 </ul>
               ) : null}
             </section>
@@ -321,6 +340,15 @@ function EmailEvidence({ analysis }: { analysis: Analysis }) {
           ) : null}
         </dl>
       </div>
+      {analysis.purged ? (
+        <div className="mt-4 flex items-start gap-3 border-t border-hair px-5 py-6 sm:px-6">
+          <Timer className="mt-0.5 size-4 shrink-0 text-lime" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">
+            The email text was deleted automatically when its retention period ended, as promised. The verdict, red flags and next steps above are
+            kept so this case still makes sense.
+          </p>
+        </div>
+      ) : (
       <div className="relative mt-4 border-t border-hair">
         {/* pattern sits outside the scroller so it stays put while the email scrolls */}
         <DotPattern cx={1} cy={1} cr={1} className="fill-white/[0.08] [mask-image:radial-gradient(420px_circle_at_center,white,transparent)] md:fill-white/[0.08]" />
@@ -357,6 +385,7 @@ function EmailEvidence({ analysis }: { analysis: Analysis }) {
           </pre>
         </div>
       </div>
+      )}
     </section>
   )
 }

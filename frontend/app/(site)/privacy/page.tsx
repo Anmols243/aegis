@@ -31,12 +31,12 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
             <strong className="text-ink">Built-in samples and red-team variants</strong> are synthetic and public.
           </li>
           <li>
-            <strong className="text-ink">Connected mailboxes:</strong> the address, server, your chosen retention period, scan counts and the app
-            password. The app password is encrypted at rest with AES-256-GCM and is never sent back to the browser.
+            <strong className="text-ink">Connected mailboxes:</strong> the address, your chosen retention period, scan counts and the sign-in token from Google or
+            Microsoft. The token is encrypted at rest with AES-256-GCM and is never sent back to the browser.
           </li>
           <li>
             <strong className="text-ink">Campaign indicators</strong> (sender, domains, links, phone numbers, a template fingerprint) are kept so that
-            related scams can be linked. Other people only ever see that "a private email shares this infrastructure", never its subject, sender
+            related scams can be linked. Other people only ever see that &quot;a private email shares this infrastructure&quot;, never its subject, sender
             or content.
           </li>
         </ul>
@@ -73,8 +73,9 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
       <ul className="flex list-disc flex-col gap-1.5 pl-5">
         <li>Only mail that arrives after you connect is scanned. Existing mail is never read.</li>
         <li>Mail is read without being marked as read.</li>
-        <li>AEGIS only adds a label (Gmail) or a flag (other providers). It never moves, deletes, forwards or sends mail.</li>
-        <li>You connect with an app password, never your main password, and you can revoke it with your provider at any time.</li>
+        <li>AEGIS only adds a label (Gmail) or a category and flag (Outlook). It never moves, deletes, forwards or sends mail.</li>
+        <li>You connect with Sign in with Google or Microsoft. AEGIS never sees your password, and you can remove its access at any time.</li>
+        <li>Google: one permission, read mail and add labels (gmail.modify). Microsoft: read and update mail (Mail.ReadWrite, the narrowest scope that allows tagging). AEGIS never uses them to send, move or delete.</li>
       </ul>
     ),
   },
@@ -107,10 +108,10 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           <Link href="/inbox" className="text-lime underline-offset-4 hover:underline">
             Inbox
           </Link>{" "}
-          page, disconnect a mailbox and tick &quot;also delete all analyses from this mailbox&quot;. The app password is deleted immediately.
+          page, disconnect a mailbox and tick &quot;also delete all analyses from this mailbox&quot;. The stored credential is deleted immediately, and Google access is revoked at Google.
         </li>
         <li>Email text is deleted automatically after the retention period.</li>
-        <li>Then revoke the app password in your email provider&apos;s security settings.</li>
+        <li>For Microsoft accounts, also remove AEGIS under your account&apos;s app permissions (Microsoft offers no way for an app to give its access back).</li>
       </ul>
     ),
   },

@@ -20,9 +20,5 @@ data/
 # hackathon packet (contains sponsor voucher codes)
 ForgeHacks*.pdf
 
-# Frontend
-node_modules/
-.next/
-dist/
-.turbo/
-
+# GSD planning artifacts (local only)
+.planning/

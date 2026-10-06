@@ -199,7 +199,14 @@ export function CampaignsView() {
             <section key={c.id} className="hud p-4">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="font-mono text-sm font-semibold text-lime">{c.id}</span>
-                <span className="font-mono text-xs text-faint">{c.analyses.length} emails</span>
+                <span className="font-mono text-xs text-faint">
+                  {c.analyses.length} {c.analyses.length === 1 ? "email" : "emails"}
+                  {c.hidden_count ? (
+                    <span className="ml-1.5 text-muted-foreground" title="Emails from other people that share this infrastructure. Their content stays private.">
+                      +{c.hidden_count} private
+                    </span>
+                  ) : null}
+                </span>
               </div>
               <p className="text-sm text-muted-foreground">{c.explanation}</p>
               <ul className="mt-3 flex flex-wrap gap-1.5">
