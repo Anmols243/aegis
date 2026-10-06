@@ -1,0 +1,275 @@
+{
+  "summary": {
+    "n": 22,
+    "scams": 12,
+    "legit": 10,
+    "scam_recall_flagged": 1.0,
+    "scam_recall_at_SCAM": 1.0,
+    "legit_cleared": 1.0,
+    "precision_flagged": 1.0,
+    "latency_mean_s": 15.1,
+    "latency_p50_s": 14.35,
+    "latency_max_s": 31.88,
+    "runs_with_failed_stage": 1
+  },
+  "rows": [
+    {
+      "id": "scam-paypal-orig",
+      "set": "corpus",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.72,
+      "duration_s": 20.21,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.97",
+        "deterministic signal: brand-impersonation"
+      ]
+    },
+    {
+      "id": "scam-paypal-var02",
+      "set": "corpus",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.725,
+      "duration_s": 19.52,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.98",
+        "deterministic signal: brand-impersonation"
+      ]
+    },
+    {
+      "id": "scam-paypal-var03",
+      "set": "corpus",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.72,
+      "duration_s": 14.35,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.97",
+        "deterministic signal: brand-impersonation"
+      ]
+    },
+    {
+      "id": "scam-paypal-var04",
+      "set": "corpus",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.737,
+      "duration_s": 18.93,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.98",
+        "deterministic signal: brand-impersonation"
+      ]
+    },
+    {
+      "id": "scam-paypal-var05",
+      "set": "corpus",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.732,
+      "duration_s": 21.38,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.97",
+        "deterministic signal: brand-impersonation"
+      ]
+    },
+    {
+      "id": "scam-paypal-var06",
+      "set": "corpus",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.737,
+      "duration_s": 20.06,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.98",
+        "deterministic signal: brand-impersonation"
+      ]
+    },
+    {
+      "id": "scam-paypal-var07",
+      "set": "corpus",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.72,
+      "duration_s": 10.2,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.97",
+        "deterministic signal: brand-impersonation"
+      ]
+    },
+    {
+      "id": "legit-order",
+      "set": "corpus",
+      "expected": "LIKELY_SAFE",
+      "label": "LIKELY_SAFE",
+      "score": 0.089,
+      "duration_s": 6.18,
+      "failed_stages": [],
+      "corroboration": []
+    },
+    {
+      "id": "legit-newsletter",
+      "set": "corpus",
+      "expected": "LIKELY_SAFE",
+      "label": "LIKELY_SAFE",
+      "score": 0.079,
+      "duration_s": 5.39,
+      "failed_stages": [],
+      "corroboration": []
+    },
+    {
+      "id": "legit-bank-alert",
+      "set": "corpus",
+      "expected": "LIKELY_SAFE",
+      "label": "LIKELY_SAFE",
+      "score": 0.089,
+      "duration_s": 6.35,
+      "failed_stages": [],
+      "corroboration": []
+    },
+    {
+      "id": "legit-meeting",
+      "set": "corpus",
+      "expected": "LIKELY_SAFE",
+      "label": "LIKELY_SAFE",
+      "score": 0.013,
+      "duration_s": 9.74,
+      "failed_stages": [],
+      "corroboration": []
+    },
+    {
+      "id": "legit-flight",
+      "set": "corpus",
+      "expected": "LIKELY_SAFE",
+      "label": "LIKELY_SAFE",
+      "score": 0.089,
+      "duration_s": 13.67,
+      "failed_stages": [],
+      "corroboration": []
+    },
+    {
+      "id": "legit-interview",
+      "set": "corpus",
+      "expected": "LIKELY_SAFE",
+      "label": "LIKELY_SAFE",
+      "score": 0.032,
+      "duration_s": 13.59,
+      "failed_stages": [],
+      "corroboration": []
+    },
+    {
+      "id": "legit-bill",
+      "set": "corpus",
+      "expected": "LIKELY_SAFE",
+      "label": "LIKELY_SAFE",
+      "score": 0.089,
+      "duration_s": 17.56,
+      "failed_stages": [],
+      "corroboration": []
+    },
+    {
+      "id": "legit-personal",
+      "set": "corpus",
+      "expected": "LIKELY_SAFE",
+      "label": "LIKELY_SAFE",
+      "score": 0.013,
+      "duration_s": 6.7,
+      "failed_stages": [],
+      "corroboration": []
+    },
+    {
+      "id": "paypal-phish",
+      "set": "samples",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.836,
+      "duration_s": 8.16,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.98",
+        "deterministic signal: dmarc-fail"
+      ]
+    },
+    {
+      "id": "ceo-gift-cards",
+      "set": "samples",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.947,
+      "duration_s": 11.38,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.98",
+        "deterministic signal: executive-on-webmail"
+      ]
+    },
+    {
+      "id": "parcel-fee",
+      "set": "samples",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.762,
+      "duration_s": 31.88,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.98",
+        "deterministic signal: display-name-spoof"
+      ]
+    },
+    {
+      "id": "injection-phish",
+      "set": "samples",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.794,
+      "duration_s": 22.55,
+      "failed_stages": [],
+      "corroboration": [
+        "forensic analyst: risk 0.98",
+        "deterministic signal: display-name-spoof"
+      ]
+    },
+    {
+      "id": "html-display-mismatch",
+      "set": "samples",
+      "expected": "SCAM",
+      "label": "SCAM",
+      "score": 0.818,
+      "duration_s": 11.54,
+      "failed_stages": [
+        "vision"
+      ],
+      "corroboration": [
+        "forensic analyst: risk 0.97",
+        "deterministic signal: display-name-spoof"
+      ]
+    },
+    {
+      "id": "legit-receipt",
+      "set": "samples",
+      "expected": "LIKELY_SAFE",
+      "label": "LIKELY_SAFE",
+      "score": 0.019,
+      "duration_s": 25.09,
+      "failed_stages": [],
+      "corroboration": []
+    },
+    {
+      "id": "legit-personal",
+      "set": "samples",
+      "expected": "LIKELY_SAFE",
+      "label": "LIKELY_SAFE",
+      "score": 0.013,
+      "duration_s": 17.44,
+      "failed_stages": [],
+      "corroboration": []
+    }
+  ]
+}

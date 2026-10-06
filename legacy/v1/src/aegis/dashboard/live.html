@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AEGIS — live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0C0E; --surface:#121518; --surface2:#171B20;
+  --ink:#EDEDE8; --muted:#8A8F98; --faint:#5A6068;
+  --hair:rgba(255,255,255,.08);
+  --lime:#D9FF3D;
+  --scam:#FF5C5C; --susp:#FFB224; --safe:#3DDC97;
+  --sans:"Inter",-apple-system,"Segoe UI",sans-serif;
+  --display:"Montserrat","Inter",-apple-system,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background-color:#000;background-image:url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAIElEQVR42mIUEhJiwAbevXuHVZyJgUQwqmEUDB0AEGAADd8DEPTX6ksAAAAASUVORK5CYII=');background-size:10px;color:var(--ink);font-family:var(--sans);min-height:100vh;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+::selection{background:rgba(217,255,61,.25)}
+
+/* ---------- background paths (after kokonutd's 21st.dev component, MIT) ----------
+   thin wire traces drifting across the canvas; comets ride each trace */
+#pixelstars{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* ---------- sonar grid (after the 21st.dev sonar-grid component) ----------
+   lime dot field; clicks on empty space send a ping. Replaces the tiled
+   dot pattern so the two grids don't overlap. */
+#sonargrid{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%;color:var(--lime)}
+body.bg-sonar{background-image:none;background-color:var(--bg)}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;
+  padding:18px 32px;border-bottom:1px solid var(--hair);
+  background:rgba(10,12,14,.72);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
+.wordmark{font-family:var(--display);font-weight:800;letter-spacing:-.01em;font-size:28px}
+.wordmark span{color:var(--muted)}
+.top-right{display:flex;align-items:center;gap:14px}
+.live-badge{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;
+  letter-spacing:.22em;padding:8px 16px;border-radius:999px;
+  background:rgba(255,255,255,.06);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,.1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18);}
+.live-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--lime);
+  box-shadow:0 0 10px var(--lime);animation:pulse 2s infinite}
+.live-badge.offline .dot{background:var(--faint);box-shadow:none;animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.refreshed{font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+/* ---------- floating glass nav ---------- */
+.nav-rail{position:fixed;left:22px;top:50%;transform:translateY(-50%);z-index:40;
+  display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:20px;
+  background:rgba(18,21,24,.82);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 12px 40px rgba(0,0,0,.5);}
+.nav-rail::after{content:"";position:absolute;inset:0;border-radius:22px;pointer-events:none;
+  background:linear-gradient(115deg,rgba(255,255,255,.09) 0%,transparent 32%);}
+.nav-btn{position:relative;display:flex;align-items:center;justify-content:center;width:46px;height:46px;
+  border-radius:15px;border:0;background:transparent;color:var(--muted);cursor:pointer;
+  transition:all .22s ease}
+.nav-btn svg{width:20px;height:20px}
+.nav-btn:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+.nav-btn.active{color:#0A0C0E;background:var(--lime)}
+.nav-btn .tip{position:absolute;left:60px;top:50%;transform:translateY(-50%) translateX(-6px);white-space:nowrap;
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;background:var(--surface2);color:var(--ink);
+  padding:6px 10px;border-radius:8px;border:1px solid var(--hair);opacity:0;pointer-events:none;transition:all .18s}
+.nav-btn:hover .tip{opacity:1;transform:translateY(-50%) translateX(0)}
+
+/* ---------- layout ---------- */
+.wrap{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:44px 28px 120px 96px}
+.narrow{max-width:880px;margin:0 auto}
+.view{display:none}
+.view.active{display:block;animation:fadeUp .45s cubic-bezier(.2,.7,.2,1)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ---------- stat strip ---------- */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--hair);
+  border:1px solid var(--hair);border-radius:18px;overflow:hidden;margin-bottom:28px}
+.stat{background:var(--surface);padding:22px 24px}
+.stat .n{font-family:var(--mono);font-size:30px;font-weight:500;letter-spacing:0;font-variant-numeric:tabular-nums}
+.stat .l{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted);margin-top:8px;text-transform:uppercase}
+.stat.scam .n{color:var(--scam)} .stat.susp .n{color:var(--susp)} .stat.safe .n{color:var(--safe)}
+
+/* ---------- try-it-live strip ---------- */
+.tryit{border:1px solid var(--hair);border-radius:18px;background:var(--surface);
+  padding:20px 24px;margin-bottom:22px}
+.tryit-head{margin-bottom:14px}
+.tryit-steps{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:18px}
+.tstep{display:flex;gap:12px;align-items:flex-start;font-size:13.5px;color:var(--muted);line-height:1.65}
+.tstep .tn{font-family:var(--mono);font-size:11px;color:#0A0C0E;background:var(--lime);border-radius:50%;
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;font-weight:600}
+.tmail{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+.copybtn{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  background:rgba(255,255,255,.06);border:1px solid var(--hair);color:var(--muted);
+  border-radius:7px;padding:4px 10px;cursor:pointer;margin-top:8px;transition:all .2s}
+.copybtn:hover{color:var(--ink);border-color:rgba(255,255,255,.25)}
+.copybtn.done{color:var(--lime);border-color:rgba(217,255,61,.4)}
+.inbox-line{font-size:12.5px;color:var(--faint);margin:-14px 2px 26px;line-height:1.6}
+.inbox-line .mono{font-family:var(--mono);color:var(--muted)}
+
+/* ---------- filter row ---------- */
+.filters{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.chip{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.06em;padding:9px 16px;border-radius:16px;
+  border:1px solid rgba(217,255,61,.35);background:rgba(12,14,17,.9);color:var(--lime);cursor:pointer;transition:all .2s}
+.chip:hover{border-color:rgba(217,255,61,.8);background:rgba(217,255,61,.1);box-shadow:0 0 12px rgba(217,255,61,.35)}
+.chip.active{background:var(--lime);border-color:var(--lime);color:#000;box-shadow:0 0 14px rgba(217,255,61,.55)}
+.search{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--surface);
+  border:1px solid var(--hair);border-radius:999px;padding:9px 16px;min-width:220px}
+.search input{background:none;border:0;outline:0;color:var(--ink);font-family:var(--mono);font-size:12px;width:100%}
+.search input::placeholder{color:var(--faint)}
+.search kbd{font-family:var(--mono);font-size:10px;color:var(--faint);border:1px solid var(--hair);
+  border-radius:5px;padding:2px 6px}
+
+/* ---------- mail layout (list left, reader right) ---------- */
+.mail-layout{display:grid;grid-template-columns:400px minmax(0,1fr);gap:16px;align-items:start}
+.mail-list{display:flex;flex-direction:column;gap:10px;min-width:0}
+.mrow{background:var(--surface);border:1px solid var(--hair);border-radius:16px;
+  padding:15px 18px;cursor:pointer;transition:border-color .2s,background .2s;
+  animation:fadeUp .4s cubic-bezier(.2,.7,.2,1) backwards}
+.mrow:hover{border-color:rgba(255,255,255,.22)}
+.mrow.selected{border-color:rgba(217,255,61,.45);background:#151920}
+.mrow .r1{display:flex;align-items:center;gap:14px;margin-bottom:8px;min-width:0}
+.mrow .subj{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;flex:1;min-width:0}
+.mrow .r2{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mrow .from{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mrow .meta{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.mrow .riskn{font-family:var(--mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.mrow .time{font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+/* ---------- reader pane ---------- */
+.reader{position:sticky;top:88px;background:var(--surface);border:1px solid var(--hair);
+  border-radius:20px;min-height:420px;max-height:calc(100vh - 110px);overflow-y:auto;min-width:0;
+  animation:fadeUp .35s cubic-bezier(.2,.7,.2,1)}
+.reader::-webkit-scrollbar{width:14px}
+/* transparent track kept clear of the rounded corners; thumb floats inset */
+.reader::-webkit-scrollbar-track{background:transparent;margin:22px 0}
+.reader::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:999px;
+  border:4px solid transparent;background-clip:padding-box}
+.reader::-webkit-scrollbar-thumb:hover{background-color:rgba(217,255,61,.45)}
+.reader::-webkit-scrollbar-corner{background:transparent}
+.reader-empty{padding:90px 30px;text-align:center;color:var(--faint);font-size:14px}
+.reader-empty .big{font-size:13px;letter-spacing:.3em;color:var(--muted);margin-bottom:10px}
+.rhead{padding:28px 32px 0}
+.rhead .stamp{display:inline-block;margin-bottom:18px}
+.rhead h2{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1.4;margin-bottom:12px}
+.rhead .rmeta{display:flex;align-items:center;gap:10px;font-family:var(--mono);
+  font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.rscore{display:flex;align-items:center;gap:16px;margin:22px 0 6px;padding:18px 22px;
+  background:rgba(255,255,255,.02);border:1px solid var(--hair);border-radius:14px}
+.rscore .score-num{font-size:40px}
+.rbody{padding:8px 32px 32px}
+
+/* ---------- shared evidence components ---------- */
+
+.score-num{font-family:var(--mono);font-size:30px;font-weight:500;letter-spacing:0;font-variant-numeric:tabular-nums;line-height:1}
+
+.stamp{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;padding:7px 12px;
+  border-radius:16px;flex-shrink:0;line-height:1.2;
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+
+.stamp.SCAM{color:var(--scam);background:rgba(255,92,92,.12);border:1px solid rgba(255,92,92,.34)}
+
+.stamp.SUSPICIOUS{color:var(--susp);background:rgba(255,178,36,.12);border:1px solid rgba(255,178,36,.34)}
+
+.stamp.LIKELY_SAFE{color:var(--safe);background:rgba(61,220,151,.10);border:1px solid rgba(61,220,151,.32)}
+
+.score-num{font-size:34px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+
+.gauge{transform:rotate(-90deg)}
+
+.gauge .bg{stroke:rgba(255,255,255,.09)}
+
+.gauge .fg{stroke-linecap:round;transition:stroke-dashoffset 1.1s cubic-bezier(.2,.7,.2,1)}
+
+.sect{margin-bottom:24px}
+
+.sect:last-child{margin-bottom:0}
+
+.mlabel{font-size:11px;letter-spacing:.28em;color:var(--faint);text-transform:uppercase;margin-bottom:12px}
+
+.flag{border-left:2px solid var(--hair);padding:4px 0 4px 16px;margin-bottom:14px}
+
+.flag.sev-high{border-color:var(--scam)}
+ .flag.sev-medium{border-color:var(--susp)}
+ .flag.sev-critical{border-color:var(--scam)}
+
+.flag .t{font-size:14px;line-height:1.55}
+
+.flag .e{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px;word-break:break-all;
+  background:rgba(255,255,255,.03);border:1px solid var(--hair);border-radius:8px;padding:8px 12px}
+
+.sig-row{display:flex;flex-wrap:wrap;gap:8px}
+
+.sig{font-family:var(--mono);font-size:12px;padding:7px 14px;border-radius:999px;border:1px solid var(--hair);
+  background:rgba(255,255,255,.03);color:var(--muted)}
+
+.sig b{font-weight:600;margin-right:6px;text-transform:uppercase;font-size:10px;letter-spacing:.1em}
+
+.sig.critical b{color:var(--scam)}
+ .sig.high b{color:var(--scam)}
+ .sig.medium b{color:var(--susp)}
+ .sig.low b{color:var(--safe)}
+
+.vote{margin-bottom:12px}
+
+.vote .vr{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;margin-bottom:6px}
+
+.vote .vr span:first-child{color:var(--muted);text-transform:capitalize}
+
+.vote .bar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+
+.vote .bar i{display:block;height:100%;border-radius:3px;background:var(--ink);
+  transition:width 1s cubic-bezier(.2,.7,.2,1)}
+
+.dissent{border:1px solid rgba(255,178,36,.35);background:rgba(255,178,36,.06);border-radius:12px;
+  padding:14px 18px;font-family:var(--mono);font-size:13px;color:var(--susp)}
+
+.timings{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px 20px}
+
+.timings b{color:var(--ink);font-weight:500}
+
+.actions{list-style:none}
+
+.actions li{display:flex;gap:12px;align-items:flex-start;font-size:14px;padding:9px 0;border-bottom:1px solid var(--hair)}
+
+.actions li:last-child{border:0}
+
+.actions .box{width:16px;height:16px;border-radius:5px;border:1px solid var(--faint);flex-shrink:0;margin-top:3px;
+  display:flex;align-items:center;justify-content:center;color:var(--lime);font-size:11px}
+
+.camp-link{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);
+  border:1px solid var(--hair);border-radius:12px;padding:12px 16px;cursor:pointer;background:rgba(255,255,255,.02)}
+
+.camp-link:hover{border-color:rgba(255,255,255,.25)}
+
+.camp-link .n{font-family:var(--mono);color:var(--lime)}
+
+
+/* ---------- verdict summary (friendly tier) ---------- */
+.summary{background:rgba(255,255,255,.025);border:1px solid var(--hair);border-radius:16px;
+  padding:20px 22px;margin-bottom:24px}
+
+.summary h3{font-size:17px;font-weight:600;letter-spacing:-.01em;margin-bottom:8px}
+
+.summary p{font-size:14px;color:var(--muted);line-height:1.65}
+
+.summary p b{color:var(--ink);font-weight:500}
+
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px;padding-top:16px;
+  border-top:1px solid var(--hair)}
+
+.fact .fv{font-family:var(--mono);font-size:14px;font-weight:600}
+
+.fact .fl{font-size:10px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;margin-top:4px}
+
+
+/* ---------- technical details toggle ---------- */
+.tech{margin-bottom:24px;border:1px solid var(--hair);border-radius:16px;overflow:hidden}
+
+.tech-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,.02);border:0;color:var(--muted);cursor:pointer;
+  font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+  padding:14px 20px;transition:color .2s}
+
+.tech-toggle:hover{color:var(--ink)}
+
+.tech-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .4s cubic-bezier(.2,.7,.2,1)}
+
+.tech.open .tech-body{grid-template-rows:1fr}
+
+.tech-in{overflow:hidden}
+
+.tech-pad{padding:4px 20px 20px}
+
+.contrib{margin-bottom:12px}
+
+.contrib .vr{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;margin-bottom:6px}
+
+.contrib .vr span:first-child{color:var(--muted);text-transform:capitalize}
+
+.contrib .bar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+
+.contrib .bar i{display:block;height:100%;border-radius:3px;background:var(--lime);
+  transition:width 1s cubic-bezier(.2,.7,.2,1)}
+/* ---------- campaigns ---------- */
+.view-head{margin:6px 2px 24px}
+.view-head h2{font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:-.01em;margin-bottom:8px}
+.view-head p{font-size:14px;color:var(--muted);line-height:1.65;max-width:640px}
+.view-head p b{color:var(--ink);font-weight:500}
+.camp{background:var(--surface);border:1px solid var(--hair);border-radius:20px;padding:28px;margin-bottom:16px;
+  animation:fadeUp .5s cubic-bezier(.2,.7,.2,1) backwards}
+.camp-top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:4px;flex-wrap:wrap}
+.camp-title{font-size:17px;font-weight:700}
+.camp-sub{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:4px}
+.camp-why{font-size:14.5px;line-height:1.7;color:var(--muted);margin:16px 0 4px;
+  padding:16px 20px;background:rgba(217,255,61,.04);border:1px solid rgba(217,255,61,.16);border-radius:14px}
+.camp-why b{color:var(--ink);font-weight:600}
+.camp-why .wl{font-size:10px;letter-spacing:.24em;color:var(--lime);text-transform:uppercase;
+  display:block;margin-bottom:8px}
+.igroup{margin-top:18px}
+.igroup .mlabel{margin-bottom:10px}
+.ichips{display:flex;flex-wrap:wrap;gap:8px}
+.ichip{font-family:var(--mono);font-size:12px;padding:8px 14px;border-radius:9px;
+  background:rgba(255,255,255,.04);border:1px solid var(--hair);color:var(--ink);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ichip b{color:var(--faint);font-weight:500;margin-right:8px;font-size:10px;
+  letter-spacing:.12em;text-transform:uppercase}
+.morebtn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted);
+  background:none;border:1px dashed var(--hair);border-radius:9px;padding:8px 14px;cursor:pointer}
+.morebtn:hover{color:var(--ink);border-color:rgba(255,255,255,.25)}
+.cemails{margin-top:20px}
+.emailrow{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--hair);
+  border-radius:12px;margin-bottom:8px;cursor:pointer;transition:border-color .2s}
+.emailrow:hover{border-color:rgba(255,255,255,.25)}
+.emailrow .esubj{font-size:13.5px;font-weight:500;flex:1;min-width:0;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.emailrow .escore{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+/* ---------- red team ---------- */
+.rt-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--hair);
+  border:1px solid var(--hair);border-radius:18px;overflow:hidden;margin-bottom:14px}
+.rt-stat{background:var(--surface);padding:18px 20px}
+.rt-stat .n{font-family:var(--mono);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums}
+.rt-stat .l{font-size:10px;letter-spacing:.22em;color:var(--muted);margin-top:4px;text-transform:uppercase}
+.rt-note{font-size:13px;color:var(--faint);margin:0 0 20px 2px}
+.rtable{background:var(--surface);border:1px solid var(--hair);border-radius:18px;overflow:hidden}
+.rrow{display:grid;grid-template-columns:1.4fr 1.4fr .7fr .9fr .7fr;gap:12px;align-items:center;
+  padding:16px 22px;border-bottom:1px solid var(--hair);font-size:13px}
+.rrow:last-child{border:0}
+.rrow.head{font-size:10px;letter-spacing:.24em;color:var(--faint);text-transform:uppercase;
+  background:rgba(255,255,255,.02)}
+.rrow .mono{font-family:var(--mono);font-size:12px}
+.rrow .sc{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.badge{font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:6px 12px;border-radius:999px;
+  border:1px solid var(--hair);display:inline-block}
+.badge.caught{color:var(--safe);border-color:rgba(61,220,151,.4)}
+.badge.flagged{color:var(--susp);border-color:rgba(255,178,36,.4)}
+.badge.missed{color:var(--scam);border-color:rgba(255,92,92,.4)}
+
+.empty{text-align:center;padding:80px 20px;color:var(--faint);font-size:14px}
+.empty .big{font-size:15px;letter-spacing:.3em;margin-bottom:12px;color:var(--muted)}
+.errbar{display:none;background:rgba(255,92,92,.07);border:1px solid rgba(255,92,92,.3);color:var(--scam);
+  font-family:var(--mono);font-size:12px;border-radius:12px;padding:12px 18px;margin-bottom:18px}
+
+/* ---------- panels (radar / HUD) ----------
+   match the site: dark tinted surface over the dot grid (light blur so the
+   sonar still reads through), hairline border, and lime viewfinder marks in
+   each corner that brighten on hover. Overrides the flat surfaces above. */
+:root{
+  --panel-fill:rgba(12,14,17,.78);
+  --panel-edge:rgba(255,255,255,.09);
+  --mark:rgba(217,255,61,.35);
+  --mark-on:rgba(217,255,61,.95);
+}
+.tryit,.stats,.search,.mrow,.reader,.camp,.rt-stats,.rtable{
+  background:var(--panel-fill);border-color:var(--panel-edge);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  transition:border-color .2s,background .2s}
+.tryit,.stats,.mrow,.camp,.rt-stats,.rtable{position:relative;--m:var(--mark)}
+/* viewfinder marks: four 12px L-shapes, 8px in from each corner */
+.tryit::before,.stats::before,.mrow::before,.camp::before,.rt-stats::before,.rtable::before{
+  content:"";position:absolute;inset:8px;pointer-events:none;z-index:1;
+  background:
+    linear-gradient(var(--m),var(--m)) top left/12px 1px,
+    linear-gradient(var(--m),var(--m)) top left/1px 12px,
+    linear-gradient(var(--m),var(--m)) top right/12px 1px,
+    linear-gradient(var(--m),var(--m)) top right/1px 12px,
+    linear-gradient(var(--m),var(--m)) bottom left/12px 1px,
+    linear-gradient(var(--m),var(--m)) bottom left/1px 12px,
+    linear-gradient(var(--m),var(--m)) bottom right/12px 1px,
+    linear-gradient(var(--m),var(--m)) bottom right/1px 12px;
+  background-repeat:no-repeat;opacity:.9;transition:opacity .2s}
+.tryit:hover,.stats:hover,.mrow:hover,.camp:hover,.rt-stats:hover,.rtable:hover{
+  --m:var(--mark-on);border-color:rgba(217,255,61,.22)}
+.search:focus-within{border-color:rgba(217,255,61,.45)}
+/* strips: cells go clear and divide with hairlines instead of the 1px grid gap */
+.stats,.rt-stats{gap:0}
+.stat,.rt-stat{background:transparent}
+.stat+.stat,.rt-stat+.rt-stat{box-shadow:inset 1px 0 0 var(--hair)}
+.mrow.selected{--m:var(--mark-on);border-color:rgba(217,255,61,.45);
+  background:linear-gradient(90deg,rgba(217,255,61,.07),rgba(12,14,17,.78) 60%)}
+
+/* border beam (after the 21st.dev BorderBeam component): a lime streak
+   orbiting the border. A conic gradient spun via --beam, masked to a 1px
+   ring. Always on for the big panels; cards only on hover / when selected. */
+@property --beam{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes beam{to{--beam:360deg}}
+.tryit::after,.stats::after,.camp::after,.rt-stats::after,.rtable::after,
+.mrow:hover::after,.mrow.selected::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:2;
+  background:conic-gradient(from var(--beam),transparent 0deg 290deg,rgba(217,255,61,.15) 310deg,
+    rgba(217,255,61,.95) 352deg,#fff 356deg,transparent 360deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  animation:beam 7s linear infinite}
+/* reader scrolls, so a positioned ::after would scroll away with the content.
+   Instead the beam is the border's own background: a solid fill clipped to the
+   padding box over a spinning conic clipped to the border box. Backgrounds
+   stay put while the content scrolls. */
+/* dot pattern (after the 21st.dev DotPattern component): 24px dot grid that
+   fades out toward the edges, as two padding-box layers over the fill. Also
+   pinned while the content scrolls. */
+.reader{border-color:transparent;
+  background:radial-gradient(ellipse 70% 60% at 50% 40%,transparent 0%,rgb(12,14,17) 100%) padding-box,
+    radial-gradient(circle,rgba(100,116,139,.7) 1px,transparent 1.6px) 0 0/24px 24px padding-box,
+    linear-gradient(rgb(12,14,17),rgb(12,14,17)) padding-box,
+    conic-gradient(from var(--beam),rgba(255,255,255,.1) 0deg 290deg,rgba(217,255,61,.3) 310deg,
+      rgba(217,255,61,.95) 352deg,#fff 356deg,rgba(255,255,255,.1) 360deg) border-box;
+  animation:fadeUp .35s cubic-bezier(.2,.7,.2,1),beam 9s linear -1.2s infinite}
+/* offset the panels so their beams don't move in lockstep */
+.stats::after{animation-delay:-2.3s}
+.camp:nth-child(even)::after,.rtable::after{animation-delay:-4.6s}
+.mrow:hover::after,.mrow.selected::after{animation-duration:3.5s}
+@media (prefers-reduced-motion:reduce){
+  .tryit::after,.stats::after,.camp::after,.rt-stats::after,.rtable::after,
+  .mrow:hover::after,.mrow.selected::after{display:none}
+  .reader{animation:none}
+}
+
+@media(max-width:760px){
+  .stat:nth-child(odd){box-shadow:none}
+  .stat:nth-child(n+3){border-top:1px solid var(--hair)}
+  .rt-stat:nth-child(3n+1){box-shadow:none}
+  .rt-stat:nth-child(n+4){border-top:1px solid var(--hair)}
+  .wrap{padding:28px 16px 110px}
+  .nav-rail{left:50%;top:auto;bottom:14px;transform:translateX(-50%);flex-direction:row}
+  .nav-btn .tip{display:none}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .rt-stats{grid-template-columns:repeat(3,1fr)}
+  .rrow{grid-template-columns:1fr 1fr;font-size:12px}
+  .rrow.head{display:none}
+  .topbar{padding:14px 18px}
+  .mail-layout{grid-template-columns:1fr}
+  .reader{position:static;max-height:none}
+}
+</style>
+</head>
+<body>
+
+<canvas id="pixelstars" aria-hidden="true"></canvas>
+<canvas id="sonargrid" aria-hidden="true"></canvas>
+
+<header class="topbar">
+  <div class="wordmark">AEGIS<span>.</span></div>
+  <div class="top-right">
+    <span class="refreshed" id="refreshed"></span>
+    <div class="live-badge" id="liveBadge"><span class="dot"></span><span id="liveText">LIVE</span></div>
+  </div>
+</header>
+
+<nav class="nav-rail" id="navRail">
+  <button class="nav-btn active" data-view="feed" aria-label="Feed">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    <span class="tip">Verdict feed</span>
+  </button>
+  <button class="nav-btn" data-view="campaigns" aria-label="Campaigns">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7.5l3 8M16 7.5l-3 8M8.5 6h7"/></svg>
+    <span class="tip">Threat campaigns</span>
+  </button>
+  <button class="nav-btn" data-view="redteam" aria-label="Red team">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
+    <span class="tip">Red team</span>
+  </button>
+</nav>
+
+<main class="wrap">
+
+  <!-- FEED -->
+  <section class="view active" id="view-feed">
+    <div class="tryit">
+      <div class="tryit-head"><span class="mlabel" style="margin:0">Try it live</span></div>
+      <div class="tryit-steps">
+        <div class="tstep"><span class="tn">1</span><span>Forward any suspicious email to<br>
+          <span class="tmail">zesty-willow-3025@homingbox.net</span><br>
+          <button class="copybtn" id="copyInbox" title="Copy address">copy</button></span></div>
+        <div class="tstep"><span class="tn">2</span><span>The agents dissect it —<br>takes about 30 seconds.</span></div>
+        <div class="tstep"><span class="tn">3</span><span>The verdict lands here,<br>with the evidence.</span></div>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="inbox-line">Verdicts appear here when emails are sent to the AEGIS analysis inbox —
+      <span class="mono">zesty-willow-3025@homingbox.net</span> — and run through the pipeline.</div>
+    <div class="filters">
+      <button class="chip active" data-f="ALL">All</button>
+      <button class="chip" data-f="SCAM">SCAM</button>
+      <button class="chip" data-f="SUSPICIOUS">Suspicious</button>
+      <button class="chip" data-f="LIKELY_SAFE">Safe</button>
+      <label class="search"><input id="q" placeholder="Search sender or subject…" autocomplete="off"><kbd>/</kbd></label>
+    </div>
+    <div class="errbar" id="errbar"></div>
+    <div class="mail-layout">
+      <div class="mail-list" id="feed"></div>
+      <div class="reader" id="reader"></div>
+    </div>
+  </section>
+
+  <!-- CAMPAIGNS -->
+  <section class="view narrow" id="view-campaigns">
+    <div id="camps"></div>
+  </section>
+
+  <!-- RED TEAM -->
+  <section class="view narrow" id="view-redteam">
+    <div class="rt-stats" id="rtStats"></div>
+    <p class="rt-note">Adversarial mutations of real scams, replayed against the pipeline as regression tests.</p>
+    <div class="rtable" id="rtTable"></div>
+  </section>
+
+</main>
+
+<script>
+// Background: sonar grid by default; ?bg=stars brings back the pixel starfield.
+(() => {
+  const stars = new URLSearchParams(location.search).get("bg") === "stars";
+  document.body.classList.toggle("bg-sonar", !stars);
+  const s = document.createElement("script");
+  s.src = stars ? "/pixel-stars.js" : "/sonar-grid.js";
+  document.body.appendChild(s);
+})();
+</script>
+<script>
+// Dashboard token: ?token= in the page URL is forwarded to every /api/* call.
+const TOKEN = new URLSearchParams(location.search).get("token") || "";
+const api = (p) => fetch(p + (p.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(TOKEN))
+  .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+
+/* ---------- seed fallback (used only if the API is unreachable) ---------- */
+const SEED = {
+  stats: { total: 2, by_label: { SCAM: 1, LIKELY_SAFE: 1 } },
+  verdicts: [
+    { email_id: "live-demo-phish-001", received_at: "2026-10-04T12:00:00Z",
+      sender: "security@paypa1-secure.com", subject: "Action required: verify your account",
+      label: "SCAM", score: 0.748, confidence: 0.41,
+      red_flags: [
+        { title: "Lookalike domain paypa1-secure.com — digit '1' substituted for 'l'", evidence: "http://paypa1-secure.com/verify?session=8f3k2", severity: "high" },
+        { title: "Urgency language threatening account suspension", evidence: "your account will be suspended within 24 hours", severity: "medium" } ],
+      det_signals: [ { name: "punycode / homoglyph domain", severity: "critical", detail: "paypa1-secure.com" },
+                     { name: "sender-domain / link-domain mismatch", severity: "high", detail: "From paypa1-secure.com, links to paypa1-secure.com" } ],
+      signals: { forensic: 0.97, sandbox: 0.30, agentboxd_phishing: 0.92 },
+      contributions: { forensic: 0.42, agentboxd_phishing: 0.23, sandbox: 0.09 },
+      dissent: ["agents disagree: forensic=0.97 vs sandbox=0.30"],
+      timings: { triage: 0.4, forensic: 6.2, vision: 3.1, sandbox: 9.8 },
+      actions: ["Quarantine the message", "Block paypa1-secure.com", "Notify the recipient"],
+      campaign_note: "Part of a 16-email campaign sharing infrastructure." },
+    { email_id: "live-test-newsletter-001", received_at: "2026-10-04T11:00:00Z",
+      sender: "newsletter@pyweekly.example", subject: "Python Weekly #612",
+      label: "LIKELY_SAFE", score: 0.137, confidence: 0.76,
+      red_flags: [], det_signals: [],
+      signals: { forensic: 0.01, sandbox: 0.13 },
+      contributions: { forensic: 0.01, sandbox: 0.13 },
+      dissent: [], timings: { triage: 0.3, forensic: 2.1 },
+      actions: ["No action needed"], campaign_note: "" }
+  ],
+  campaigns: [ { n_emails: 16, infra: ["paypa1-secure.com", "185.22.172.9"],
+    why: "Same lookalike domain and sending IP across 16 parcel-scam emails." } ],
+  redteam: { fixtures: 5, caught: 0, missed: 5, fixed: 0, open: 5,
+    cases: [ { id: "rt-20261004-001", mutation_axes: ["homoglyph-brand"], score: 0.69, actual_label: "SUSPICIOUS" },
+             { id: "rt-20261004-002", mutation_axes: ["tld-swap"], score: 0.69, actual_label: "SUSPICIOUS" },
+             { id: "rt-20261004-003", mutation_axes: ["url-display-mismatch"], score: 0.68, actual_label: "SUSPICIOUS" } ] }
+};
+
+const state = { data: null, online: true, filter: "ALL", q: "", view: "feed",
+  selected: null, tech: new Set(), sig: "" };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct = (x) => Math.round(x * 100);
+const rel = (iso) => { const s = (Date.now() - new Date(iso).getTime()) / 1e3;
+  if (s < 60) return "just now"; if (s < 3600) return Math.floor(s/60) + "m ago";
+  if (s < 86400) return Math.floor(s/3600) + "h ago"; return Math.floor(s/86400) + "d ago"; };
+const stampColor = { SCAM: "var(--scam)", SUSPICIOUS: "var(--susp)", LIKELY_SAFE: "var(--safe)" };
+function parseSubject(v) {
+  const bp = v.body_preview || "";
+  const m = bp.match(/^subject:\s*(.+)$/mi);
+  if (m) return m[1].trim().slice(0, 90);
+  const lines = bp.split("\n").map(s => s.trim())
+    .filter(s => s && !/^(from:|dear\s[^,]*,?$)/i.test(s));
+  return (lines[0] || v.email_id).slice(0, 90);
+}
+const senderOf = (v) => v.sender || v.email_id || "unknown sender";
+
+/* Plain-English verdict summary: the friendly tier everyone reads. */
+function confWord(c) { return c == null ? "—" : c < 0.5 ? "Low" : c < 0.75 ? "Medium" : "High"; }
+function summarize(v) {
+  const flags = v.red_flags || [], det = v.det_signals || [];
+  const n = flags.length + det.length;
+  const disagreed = (v.dissent || []).length > 0;
+  const total = Object.values(v.timings || {}).reduce((a, b) => a + (+b || 0), 0);
+  let headline, body;
+  if (v.label === "SCAM") {
+    headline = "This email is a scam.";
+    body = `<b>${n} warning sign${n === 1 ? "" : "s"}</b> found. ` +
+      (flags[0] ? esc(flags[0].title) + " " : "") +
+      (disagreed ? "The agents <b>disagreed on the details</b> — the evidence below was strong enough to convict anyway."
+                 : "The agents <b>agreed</b> on the call.");
+  } else if (v.label === "SUSPICIOUS") {
+    headline = "This email looks suspicious.";
+    body = `Something is off — <b>${n} warning sign${n === 1 ? "" : "s"}</b> found, but not enough to call it outright fraud. ` +
+      (flags[0] ? esc(flags[0].title) + " " : "") + "Treat it as guilty until proven innocent.";
+  } else {
+    headline = "This email looks legitimate.";
+    body = `No meaningful warning signs. ` +
+      (disagreed ? "The agents <b>disagreed on details</b>, but the overall call is safe."
+                 : "All agents <b>agreed</b> on the call.");
+  }
+  return `<div class="sect summary"><h3>${headline}</h3><p>${body}</p>
+    <div class="facts">
+      <div class="fact"><div class="fv">${confWord(v.confidence)}${v.confidence != null ? " · " + pct(v.confidence) + "%" : ""}</div><div class="fl">Confidence</div></div>
+      <div class="fact"><div class="fv">${disagreed ? "Disagreed" : "Agreed"}</div><div class="fl">Agents</div></div>
+      <div class="fact"><div class="fv">${total ? total.toFixed(1) + "s" : "—"}</div><div class="fl">Analysis time</div></div>
+      <div class="fact"><div class="fv">${n}</div><div class="fl">Warning signs</div></div>
+    </div></div>`;
+}
+
+/* ---------- data ---------- */
+async function load() {
+  try {
+    const [stats, verdicts, campaigns, redteam, plans] = await Promise.all([
+      api("/api/stats"), api("/api/verdicts?limit=50"), api("/api/campaigns"),
+      api("/api/redteam"), api("/api/action-plans").catch(() => ({}))
+    ]);
+    // normalize possibly string-encoded JSON fields from the store
+    const J = (x) => { if (x == null) return x; if (typeof x !== "string") return x;
+      try { return JSON.parse(x); } catch { return x; } };
+    verdicts.forEach(v => {
+      v.red_flags = J(v.red_flags) || []; v.det_signals = J(v.det_signals) || [];
+      v.signals = J(v.signals) || {}; v.contributions = J(v.contributions) || {};
+      v.dissent = J(v.dissent) || []; v.timings = J(v.timings) || {};
+      v.subject = v.subject || parseSubject(v);
+    });
+    // action plans: map label -> plan steps for the actions section
+    const planSteps = (label) => {
+      const p = plans && plans[label];
+      if (!p) return [];
+      if (Array.isArray(p)) return p;
+      return [].concat(p.steps || p.actions || p.items || []);
+    };
+    verdicts.forEach(v => { if (!v.actions || !v.actions.length) v.actions = planSteps(v.label); });
+    state.data = { stats, verdicts, campaigns, redteam, plans };
+    state.online = true;
+  } catch (e) {
+    state.data = SEED; state.online = false;
+  }
+  // Don't thrash the DOM (and collapse cards you're reading) when nothing changed.
+  const sig = JSON.stringify([state.data.stats,
+    (state.data.verdicts || []).map(v => [v.email_id, v.label, v.score])]);
+  if (sig !== state.sig) { state.sig = sig; render(); }
+  else setLiveBadge();
+}
+
+function setLiveBadge() {
+  const b = $("liveBadge");
+  b.classList.toggle("offline", !state.online);
+  $("liveText").textContent = state.online ? "LIVE" : "OFFLINE — CACHED";
+  $("refreshed").textContent = state.online
+    ? "updated " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"})
+    : "API unreachable";
+}
+
+/* ---------- count-up ---------- */
+function countUp(el, to, dur = 900) {
+  const t0 = performance.now();
+  (function tick(t) {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = String(Math.round(to * e)).padStart(2, "0");
+    if (k < 1) requestAnimationFrame(tick);
+  })(t0);
+}
+
+/* ---------- feed ---------- */
+function gaugeSVG(score, color) {
+  const r = 15.5, c = 2 * Math.PI * r, off = c * (1 - score);
+  return `<svg class="gauge" width="38" height="38" viewBox="0 0 38 38">
+    <circle class="bg" cx="19" cy="19" r="${r}" fill="none" stroke-width="3.5"/>
+    <circle class="fg" cx="19" cy="19" r="${r}" fill="none" stroke="${color}" stroke-width="3.5"
+      stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${c.toFixed(1)}"
+      data-off="${off.toFixed(1)}"/></svg>`;
+}
+
+function mailRow(v, i) {
+  const color = stampColor[v.label] || "var(--muted)";
+  return `
+  <div class="mrow${state.selected === v.email_id ? " selected" : ""}" data-id="${esc(v.email_id)}"
+       style="animation-delay:${Math.min(i*60, 300)}ms" tabindex="0" role="button" aria-label="${esc(v.label)}: ${esc(v.subject || v.email_id)}">
+    <div class="r1">
+      <span class="stamp ${esc(v.label)}" style="font-size:10px;padding:6px 11px">${esc(v.label.replace(/_/g, " "))}</span>
+      <span class="subj">${esc(v.subject || v.email_id)}</span>
+    </div>
+    <div class="r2">
+      <span class="from">${esc(senderOf(v))} &middot; ${esc(rel(v.received_at))}</span>
+      <span class="meta"><span class="riskn" style="color:${color}">${pct(v.score)}</span></span>
+    </div>
+  </div>`;
+}
+
+/* Full evidence view for the reader pane (was the card body). */
+function verdictDetail(v) {
+  const flags = (v.red_flags || []).map(f => `
+    <div class="flag sev-${esc(f.severity || "medium")}">
+      <div class="t">${esc(f.title)}</div>
+      ${f.evidence ? `<div class="e">${esc(f.evidence)}</div>` : ""}
+    </div>`).join("");
+  const sigs = (v.det_signals || []).map(s => `
+    <span class="sig ${esc(s.severity)}"><b>${esc(s.severity)}</b>${esc(s.name)}</span>`).join("");
+  const votes = Object.entries(v.signals || {}).filter(([, x]) => x != null).map(([k, x]) => `
+    <div class="vote"><div class="vr"><span>${esc(k.replace(/_/g, " "))}</span><span>${pct(x)}%</span></div>
+    <div class="bar"><i data-w="${pct(x)}" style="width:0"></i></div></div>`).join("");
+  const dissent = (v.dissent && v.dissent.length)
+    ? `<div class="sect"><div class="mlabel">Dissent</div>
+       ${v.dissent.map(d => `<div class="dissent">${esc(d)}</div>`).join("")}</div>` : "";
+  const timings = v.timings && Object.keys(v.timings).length
+    ? `<div class="sect" style="margin-bottom:0"><div class="mlabel">Stage timings</div><div class="timings">${
+        Object.entries(v.timings).map(([k, s]) => `<span>${esc(k)} <b>${s}s</b></span>`).join("")}</div></div>` : "";
+  const contribEntries = Object.entries(v.contributions || {}).filter(([, x]) => x != null && +x > 0);
+  const contribTotal = contribEntries.reduce((a, [, x]) => a + (+x || 0), 0) || 1;
+  const contribs = contribEntries.length
+    ? `<div class="sect"><div class="mlabel">What weighed most</div>${contribEntries
+        .sort((a, b) => b[1] - a[1]).map(([k, x]) => `
+    <div class="contrib"><div class="vr"><span>${esc(k.replace(/_/g, " "))}</span><span>${pct(x / contribTotal)}%</span></div>
+    <div class="bar"><i data-w="${pct(x / contribTotal)}" style="width:0"></i></div></div>`).join("")}</div>` : "";
+  const techInner = [sigs, votes, contribs, timings].some(Boolean)
+    ? `<div class="tech${state.tech.has(v.email_id) ? " open" : ""}" data-tech="${esc(v.email_id)}">
+      <button class="tech-toggle"><span>Technical details</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="tech-body"><div class="tech-in"><div class="tech-pad">
+        ${sigs ? `<div class="sect"><div class="mlabel">Deterministic signals</div><div class="sig-row">${sigs}</div></div>` : ""}
+        ${votes ? `<div class="sect"><div class="mlabel">Agent votes</div>${votes}</div>` : ""}
+        ${contribs}${timings}
+      </div></div></div></div>` : "";
+  const actions = (v.actions && v.actions.length)
+    ? `<div class="sect"><div class="mlabel">Recommended actions</div><ul class="actions">${
+        v.actions.map(a => `<li><span class="box">\u2713</span><span>${esc(typeof a === "string" ? a : a.title || a.step || JSON.stringify(a))}</span></li>`).join("")}</ul></div>` : "";
+  const camp = v.campaign_note
+    ? `<div class="sect"><div class="mlabel">Campaign</div>
+       <div class="camp-link" data-goto="campaigns"><span class="n">${esc(v.campaign_note)}</span> \u2192</div></div>` : "";
+  return `${summarize(v)}
+      ${flags ? `<div class="sect"><div class="mlabel">Red flags</div>${flags}</div>` : ""}
+      ${techInner}
+      ${dissent}${actions}${camp}`;
+}
+
+function renderReader() {
+  const list = filteredVerdicts();
+  let v = list.find(x => x.email_id === state.selected) || list[0] || null;
+  state.selected = v ? v.email_id : null;
+  const el = $("reader");
+  if (!v) {
+    el.innerHTML = `<div class="reader-empty"><div class="big">NO VERDICTS</div>Nothing here yet.</div>`;
+    return;
+  }
+  const color = stampColor[v.label] || "var(--muted)";
+  el.innerHTML = `
+    <div class="rhead">
+      <span class="stamp ${esc(v.label)}">${esc(v.label.replace(/_/g, " "))}</span>
+      <h2>${esc(v.subject || v.email_id)}</h2>
+      <div class="rmeta"><span>${esc(senderOf(v))}</span><span>&middot;</span>
+        <span>${esc(rel(v.received_at))}</span><span>&middot;</span><span>${esc(v.email_id)}</span></div>
+      <div class="rscore">${gaugeSVG(v.score, color)}
+        <span><span class="score-num" data-count="${pct(v.score)}">0</span>
+        <div class="score-cap">risk score</div></span>
+      </div>
+    </div>
+    <div class="rbody">${verdictDetail(v)}</div>`;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.querySelectorAll("[data-count]").forEach(n => countUp(n, +n.dataset.count));
+    el.querySelectorAll(".gauge .fg").forEach(g => g.style.strokeDashoffset = g.dataset.off);
+    el.querySelectorAll(".vote .bar i, .contrib .bar i").forEach(b => b.style.width = b.dataset.w + "%");
+  }));
+  el.querySelectorAll("[data-goto]").forEach(g =>
+    g.addEventListener("click", () => switchView(g.dataset.goto)));
+  el.querySelectorAll("[data-tech]").forEach(box => {
+    box.querySelector(".tech-toggle").addEventListener("click", () => {
+      const id = box.dataset.tech;
+      const nowOpen = box.classList.toggle("open");
+      nowOpen ? state.tech.add(id) : state.tech.delete(id);
+    });
+  });
+}
+
+function filteredVerdicts() {
+  const { verdicts } = state.data;
+  const q = state.q.toLowerCase();
+  return verdicts.filter(v =>
+    (state.filter === "ALL" || v.label === state.filter) &&
+    (!q || (v.sender + " " + (v.subject || "")).toLowerCase().includes(q)));
+}
+
+function renderFeed() {
+  const { stats } = state.data;
+  const by = stats.by_label || {};
+  $("stats").innerHTML = [
+    ["Total", stats.total || 0, ""], ["SCAM", by.SCAM || 0, "scam"],
+    ["Suspicious", by.SUSPICIOUS || 0, "susp"], ["Safe", by.LIKELY_SAFE || 0, "safe"]
+  ].map(([l, n, c]) => `<div class="stat ${c}"><div class="n" data-count="${n}">00</div><div class="l">${l}</div></div>`).join("");
+
+  const list = filteredVerdicts();
+  $("feed").innerHTML = list.length ? list.map(mailRow).join("")
+    : `<div class="empty"><div class="big">NO MATCHES</div>Nothing matches this filter.</div>`;
+
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    document.querySelectorAll("#stats [data-count]").forEach(el => countUp(el, +el.dataset.count))));
+
+  const select = (id, scroll) => {
+    state.selected = id;
+    document.querySelectorAll(".mrow").forEach(r =>
+      r.classList.toggle("selected", r.dataset.id === id));
+    renderReader();
+    if (scroll && window.innerWidth <= 900)
+      $("reader").scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  document.querySelectorAll(".mrow").forEach(row => {
+    row.addEventListener("click", () => select(row.dataset.id, true));
+    row.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(row.dataset.id, false); }
+    });
+  });
+  renderReader();
+}
+
+/* ---------- campaigns ---------- */
+function groupInfra(infra) {
+  const g = { domain: [], url: [], sender: [], phone: [], ip: [], other: [] };
+  (infra || []).forEach(n => {
+    const i = n.indexOf(":");
+    const t = i < 0 ? "other" : n.slice(0, i), v = i < 0 ? n : n.slice(i + 1);
+    (g[t] ? g[t] : g.other).push(v);
+  });
+  return g;
+}
+
+function renderCampaigns() {
+  const camps = state.data.campaigns || [];
+  const byId = {};
+  (state.data.verdicts || []).forEach(v => byId[v.email_id] = v);
+  const head = `<div class="view-head"><h2>Threat campaigns</h2>
+    <p>When separate emails share infrastructure — the <b>same domains, senders,
+    or phishing URLs</b> — the system links them into a campaign. That is how
+    one-off scams become a visible operation.</p></div>`;
+  if (!camps.length) {
+    $("camps").innerHTML = head +
+      `<div class="empty"><div class="big">NO CAMPAIGNS</div>No campaigns detected yet.</div>`;
+    return;
+  }
+  $("camps").innerHTML = head + camps.map((c, i) => {
+    const g = groupInfra(c.infra);
+    const emails = (c.emails || []).map(id => byId[id]).filter(Boolean);
+    const lbl = {};
+    emails.forEach(v => lbl[v.label] = (lbl[v.label] || 0) + 1);
+    const lblTxt = Object.entries(lbl)
+      .map(([k, n]) => `${n} ${k.replace(/_/g, " ").toLowerCase()}`).join(" &middot; ");
+    const parts = [];
+    const urlWord = ((lbl.SCAM || 0) + (lbl.SUSPICIOUS || 0)) > 0 ? "phishing URL" : "URL";
+    if (g.domain.length) parts.push(`the domain <b>${esc(g.domain[0])}</b>` +
+      (g.domain.length > 1 ? ` (+${g.domain.length - 1} more)` : ""));
+    if (g.url.length) parts.push(`<b>${g.url.length}</b> ${urlWord}${g.url.length > 1 ? "s" : ""}`);
+    if (g.sender.length) parts.push(`<b>${g.sender.length}</b> sender${g.sender.length > 1 ? "s" : ""}`);
+    if (g.phone.length) parts.push(`<b>${g.phone.length}</b> phone number${g.phone.length > 1 ? "s" : ""}`);
+    if (g.ip.length) parts.push(`IP <b>${esc(g.ip[0])}</b>`);
+    const why = parts.length
+      ? `These emails share ${parts.join(", ")} — that is the fingerprint tying
+         <b>${c.n_emails} emails</b> into one operation.`
+      : `Linked by shared infrastructure across <b>${c.n_emails} emails</b>.`;
+    const chip = (t, v) => `<span class="ichip"><b>${t}</b>${esc(v)}</span>`;
+    const shown = [
+      ...g.domain.map(v => chip("domain", v)),
+      ...g.url.map(v => chip("url", v.length > 60 ? v.slice(0, 60) + "\u2026" : v)),
+      ...g.sender.map(v => chip("sender", v)),
+      ...g.phone.map(v => chip("phone", v)),
+      ...g.ip.map(v => chip("ip", v)),
+    ].join("");
+    const hidden = g.other.length
+      ? `<span class="morebtn" data-more="${i}">+${g.other.length} technical fingerprints</span>
+         <span class="moreslots" data-slots="${i}" style="display:none">` +
+         g.other.map(v => `<span class="ichip"><b>hash</b>${esc(v.slice(0, 24))}\u2026</span>`).join("") +
+         `</span>` : "";
+    const erows = emails.slice(0, 4).map(v => `
+      <div class="emailrow" data-open="${esc(v.email_id)}">
+        <span class="stamp ${esc(v.label)}" style="font-size:10px;padding:6px 11px">${esc(v.label.replace(/_/g, " "))}</span>
+        <span class="esubj">${esc(v.subject || v.email_id)}</span>
+        <span class="escore">${pct(v.score)}</span>
+      </div>`).join("");
+    return `
+    <div class="camp" style="animation-delay:${Math.min(i * 80, 400)}ms">
+      <div class="camp-top">
+        <div><div class="camp-title">Campaign ${i + 1}</div>
+        <div class="camp-sub">${c.n_emails} emails${lblTxt ? " &middot; " + lblTxt : ""}</div></div>
+      </div>
+      <div class="camp-why"><span class="wl">Why these are linked</span>${why}</div>
+      <div class="igroup"><div class="mlabel">Shared infrastructure</div>
+        <div class="ichips">${shown}${hidden}</div></div>
+      ${erows ? `<div class="cemails"><div class="mlabel">Emails in this campaign</div>${erows}</div>` : ""}
+    </div>`;
+  }).join("");
+  document.querySelectorAll("[data-more]").forEach(b => b.addEventListener("click", () => {
+    const slots = document.querySelector(`[data-slots="${b.dataset.more}"]`);
+    const show = slots.style.display === "none";
+    slots.style.display = show ? "contents" : "none";
+    b.textContent = show ? "show less" : `+${slots.children.length} technical fingerprints`;
+  }));
+  document.querySelectorAll("[data-open]").forEach(r => r.addEventListener("click", () => {
+    state.selected = r.dataset.open;
+    switchView("feed");
+  }));
+}
+
+/* ---------- red team ---------- */
+function renderRedteam() {
+  const rt = state.data.redteam;
+  const s = rt.summary || rt; // API returns counters at top level
+  $("rtStats").innerHTML = [
+    ["Variants", s.fixtures || 0], ["Caught", s.caught || 0], ["Missed", s.missed || 0],
+    ["Fixed", s.fixed || 0], ["Open", s.open || 0]
+  ].map(([l, n]) => `<div class="rt-stat"><div class="n" data-count="${n}">00</div><div class="l">${l}</div></div>`).join("");
+  const statusOf = (c) => c.actual_label === "SCAM"
+    ? ["CAUGHT", "caught"] : c.actual_label === "SUSPICIOUS" ? ["FLAGGED", "flagged"] : ["MISSED", "missed"];
+  $("rtTable").innerHTML =
+    `<div class="rrow head"><span>Variant</span><span>Attack axis</span><span>Score</span><span>Verdict</span><span>Status</span></div>` +
+    (rt.cases || []).map(c => {
+      const [txt, cls] = statusOf(c);
+      const axis = (c.mutation_axes || [c.axis]).filter(Boolean).join(", ");
+      return `
+    <div class="rrow"><span class="mono">${esc(c.id)}</span><span>${esc(axis)}</span>
+      <span class="sc">${pct(c.score)}</span>
+      <span><span class="stamp ${esc(c.actual_label || c.verdict)}" style="font-size:10px;padding:6px 12px">${esc(c.actual_label || c.verdict)}</span></span>
+      <span><span class="badge ${cls}">${txt}</span></span>
+    </div>`; }).join("");
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    document.querySelectorAll("#rtStats [data-count]").forEach(el => countUp(el, +el.dataset.count))));
+}
+
+/* ---------- shell ---------- */
+function render() {
+  setLiveBadge();
+  renderFeed(); renderCampaigns(); renderRedteam();
+  const eb = $("errbar");
+  if (!state.online) { eb.style.display = "block"; eb.textContent = "API unreachable — showing cached data."; }
+  else eb.style.display = "none";
+}
+
+function switchView(name) {
+  state.view = name;
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === name));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + name));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+document.querySelectorAll(".nav-btn").forEach(b => b.addEventListener("click", () => switchView(b.dataset.view)));
+document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+  document.querySelectorAll(".chip").forEach(x => x.classList.remove("active"));
+  c.classList.add("active"); state.filter = c.dataset.f; renderFeed();
+}));
+$("q").addEventListener("input", e => { state.q = e.target.value; renderFeed(); });
+$("copyInbox").addEventListener("click", () => {
+  navigator.clipboard.writeText("zesty-willow-3025@homingbox.net").then(() => {
+    const b = $("copyInbox"); b.textContent = "copied"; b.classList.add("done");
+    setTimeout(() => { b.textContent = "copy"; b.classList.remove("done"); }, 1600);
+  });
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== $("q")) { e.preventDefault(); $("q").focus(); }
+  if (e.key === "Escape") {
+    if (document.activeElement === $("q")) { $("q").blur(); }
+    else { state.q = ""; $("q").value = ""; renderFeed(); }
+  }
+});
+
+load();
+setInterval(load, 10000);
+</script>
+</body>
+</html>

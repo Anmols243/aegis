@@ -10,3 +10,19 @@ data/*.db
 data/errors/
 data/.dash_token
 data/audit.log
+
+# v2
+backend/data/
+data/
+.env.*
+!.env.example
+.pytest_cache/
+# hackathon packet (contains sponsor voucher codes)
+ForgeHacks*.pdf
+
+# Frontend
+node_modules/
+.next/
+dist/
+.turbo/
+

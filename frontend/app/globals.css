@@ -1,0 +1,251 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------- AEGIS design tokens (see brand.md) ---------- */
+:root {
+  /* brand */
+  --aegis-bg: #0a0c0e;
+  --aegis-bg-deep: #000000;
+  --aegis-surface: #121518;
+  --aegis-surface-2: #171b20;
+  --aegis-ink: #ededE8;
+  --aegis-muted: #8a8f98;
+  --aegis-faint: #5a6068;
+  --aegis-hair: rgba(255, 255, 255, 0.08);
+  --aegis-lime: #d9ff3d;
+  --aegis-scam: #ff5c5c;
+  --aegis-susp: #ffb224;
+  --aegis-safe: #3ddc97;
+
+  /* shadcn semantic tokens, mapped onto the brand (dark only) */
+  --background: var(--aegis-bg);
+  --foreground: var(--aegis-ink);
+  --card: var(--aegis-surface);
+  --card-foreground: var(--aegis-ink);
+  --popover: var(--aegis-surface-2);
+  --popover-foreground: var(--aegis-ink);
+  --primary: var(--aegis-lime);
+  --primary-foreground: #0a0c0e;
+  --secondary: var(--aegis-surface-2);
+  --secondary-foreground: var(--aegis-ink);
+  --muted: var(--aegis-surface-2);
+  --muted-foreground: var(--aegis-muted);
+  --accent: rgba(217, 255, 61, 0.1);
+  --accent-foreground: var(--aegis-lime);
+  --destructive: var(--aegis-scam);
+  --border: var(--aegis-hair);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: var(--aegis-lime);
+  --radius: 0.875rem;
+  --chart-1: var(--aegis-lime);
+  --chart-2: var(--aegis-safe);
+  --chart-3: var(--aegis-susp);
+  --chart-4: var(--aegis-scam);
+  --chart-5: var(--aegis-muted);
+  --sidebar: var(--aegis-surface);
+  --sidebar-foreground: var(--aegis-ink);
+  --sidebar-primary: var(--aegis-lime);
+  --sidebar-primary-foreground: #0a0c0e;
+  --sidebar-accent: var(--aegis-surface-2);
+  --sidebar-accent-foreground: var(--aegis-ink);
+  --sidebar-border: var(--aegis-hair);
+  --sidebar-ring: var(--aegis-lime);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-heading: var(--font-montserrat), var(--font-inter), sans-serif;
+  --font-display: var(--font-montserrat), var(--font-inter), sans-serif;
+
+  --color-lime: var(--aegis-lime);
+  --color-scam: var(--aegis-scam);
+  --color-susp: var(--aegis-susp);
+  --color-safe: var(--aegis-safe);
+  --color-ink: var(--aegis-ink);
+  --color-faint: var(--aegis-faint);
+  --color-surface: var(--aegis-surface);
+  --color-surface-2: var(--aegis-surface-2);
+  --color-hair: var(--aegis-hair);
+  --color-deep: var(--aegis-bg-deep);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  ::selection {
+    background: rgba(217, 255, 61, 0.25);
+  }
+  :focus-visible {
+    outline: 2px solid var(--aegis-lime);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* HUD panel: dark surface, hairline border, lime viewfinder marks in the corners */
+  .hud {
+    --m: rgba(217, 255, 61, 0.35);
+    position: relative;
+    background: rgba(12, 14, 17, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 1.25rem;
+    backdrop-filter: blur(6px);
+    transition: border-color 0.2s;
+  }
+  .hud::before {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    pointer-events: none;
+    z-index: 1;
+    background:
+      linear-gradient(var(--m), var(--m)) top left / 12px 1px,
+      linear-gradient(var(--m), var(--m)) top left / 1px 12px,
+      linear-gradient(var(--m), var(--m)) top right / 12px 1px,
+      linear-gradient(var(--m), var(--m)) top right / 1px 12px,
+      linear-gradient(var(--m), var(--m)) bottom left / 12px 1px,
+      linear-gradient(var(--m), var(--m)) bottom left / 1px 12px,
+      linear-gradient(var(--m), var(--m)) bottom right / 12px 1px,
+      linear-gradient(var(--m), var(--m)) bottom right / 1px 12px;
+    background-repeat: no-repeat;
+  }
+  .hud-interactive:hover {
+    --m: rgba(217, 255, 61, 0.95);
+    border-color: rgba(217, 255, 61, 0.22);
+  }
+
+  /* mono uppercase micro-label */
+  .label-mono {
+    font-family: var(--font-jetbrains), ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--aegis-muted);
+  }
+
+  /* filter chips: dark pill, lime outline; active is solid lime */
+  .chip {
+    font-family: var(--font-jetbrains), ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 8px 15px;
+    border-radius: 999px;
+    border: 1px solid rgba(217, 255, 61, 0.35);
+    background: rgba(12, 14, 17, 0.9);
+    color: var(--aegis-lime);
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .chip:hover {
+    border-color: rgba(217, 255, 61, 0.8);
+    background: rgba(217, 255, 61, 0.1);
+  }
+  .chip[data-active="true"] {
+    background: var(--aegis-lime);
+    border-color: var(--aegis-lime);
+    color: #000;
+    box-shadow: 0 0 14px rgba(217, 255, 61, 0.45);
+  }
+
+  /* inline evidence highlight in the original email */
+  .evidence-mark {
+    background: rgba(255, 92, 92, 0.16);
+    border-bottom: 1.5px solid var(--aegis-scam);
+    color: var(--aegis-ink);
+    border-radius: 3px;
+    padding: 0 1px;
+    cursor: help;
+  }
+  .evidence-mark[data-sev="medium"] {
+    background: rgba(255, 178, 36, 0.14);
+    border-bottom-color: var(--aegis-susp);
+  }
+  .evidence-mark[data-sev="low"],
+  .evidence-mark[data-sev="info"] {
+    background: rgba(217, 255, 61, 0.1);
+    border-bottom-color: rgba(217, 255, 61, 0.6);
+  }
+
+  .thin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  }
+}
+
+@keyframes aegis-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
