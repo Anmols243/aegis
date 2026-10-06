@@ -110,36 +110,42 @@ Errors: `{"detail": "message"}` with 400/401/404/413/422/429.
 
 ## Mailboxes (v2.1)
 
-Connect a mailbox over IMAP with an app password. AEGIS scans **new mail only** (from the moment
-of connecting), never marks mail as read, and only adds labels/flags: `AEGIS/Scam`,
-`AEGIS/Suspicious` (Gmail labels) or IMAP flags (`\Flagged` + `$AEGIS_Scam` / `$AEGIS_Suspicious`)
-elsewhere. It never moves, deletes or sends mail. The owner's own address is replaced with
-`[your address]` before analysis. Bodies are purged after `retention_days` (default 7).
+Connect a mailbox with Sign in with Google or Sign in with Microsoft (OAuth code flow with PKCE;
+IMAP and app passwords are not supported). AEGIS scans **new mail only** (from the moment of
+connecting), never marks mail as read, and only tags it: Gmail labels `AEGIS/Scam` (+ STARRED) or
+`AEGIS/Suspicious`; Outlook categories `AEGIS/Scam` (+ flagged) or `AEGIS/Suspicious`, keeping
+existing categories. It never moves, deletes or sends mail. The owner's own address is replaced
+with `[your address]` before analysis. Bodies are purged after `retention_days` (default 7).
+`{provider}` is `google` or `microsoft`.
 
 ### Mailbox
 ```json
-{"id": "mb_...", "provider": "gmail", "email": "me@gmail.com", "host": "imap.gmail.com",
- "status": "active|paused|error", "last_checked_at": "...", "last_error": null,
- "created_at": "...", "scanned": 12, "flagged": 3, "label_mode": "gmail-labels|imap-flags",
- "retention_days": 7}
+{"id": "mb_...", "provider": "google|microsoft", "email": "me@gmail.com",
+ "host": "gmail.googleapis.com|graph.microsoft.com", "status": "active|paused|error",
+ "last_checked_at": "...", "last_error": null, "created_at": "...", "scanned": 12, "flagged": 3,
+ "label_mode": "gmail-api|outlook", "retention_days": 7,
+ "manage_url": "https://myaccount.google.com/connections"}
 ```
+
+`manage_url` is where the user can remove AEGIS's access at the provider (Microsoft:
+`https://account.live.com/consent/Manage`). Mailboxes left over from the removed IMAP option have
+`manage_url: null` and switch to `status: "error"` on their next check, with a message asking the
+user to disconnect and sign in again.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| POST | `/oauth/google/start` | `{"retention_days": 1\|7\|30}` | `{"url", "state", "pair"}`: open `url` in a new tab, show `pair`. 503 when Google is not configured, 403 without a viewer |
-| GET | `/oauth/google/status?state=` | | Starting viewer only (else 404): `{"status": "pending\|exchanging\|confirm\|saving\|connected\|cancelled\|error\|expired", "email", "error"}` |
-| GET | `/oauth/google/callback` | Google's `code`, `state` or `error` | 303 to `/inbox?google=connected` (same browser), `/connect/google?state=` (other browser), or `/inbox?google_error=<message>` |
-| GET | `/oauth/google/pairing?state=` | | `{"status", "email", "pair", "error"}` for the confirmation page; 404 when not waiting |
-| POST | `/oauth/google/confirm` | `{"state", "connect": true\|false}` | `{"status": "connected", "email"}` (attached to the starting viewer) or `{"status": "cancelled"}` (token revoked); 409 when not waiting |
-| GET | `/mailbox-providers` | | First entry `{"id": "google", "oauth": true, "supported": <configured>}`, then `[{"id": "gmail", "name": "Gmail", "host": "imap.gmail.com", "port": 993, "app_password_url": "...", "steps": ["..."], "supported": true}]` (outlook listed with `supported: false` and a reason) |
-| POST | `/mailboxes` | `{"provider": "gmail", "email": "...", "app_password": "...", "host": "only for custom", "retention_days": 7}` | `201 Mailbox`; 400 with a readable `detail` if login fails; 403 without a viewer |
+| GET | `/mailbox-providers` | | `[{"id": "google", "name": "Google", "covers": "Gmail and Google Workspace", "supported": <configured>}, {"id": "microsoft", "name": "Microsoft", "covers": "Outlook.com, Hotmail, Live and Microsoft 365", "supported": <configured>}]` |
+| POST | `/oauth/{provider}/start` | `{"retention_days": 1\|7\|30}` | `{"url", "state", "pair"}`: open `url` in a new tab, show `pair`. 503 when that provider is not configured, 403 without a viewer |
+| GET | `/oauth/status?state=` | | Starting viewer only (else 404): `{"status": "pending\|exchanging\|confirm\|saving\|connected\|cancelled\|error\|expired", "email", "error"}` |
+| GET | `/oauth/{provider}/callback` | The provider's `code`, `state` or `error` | 303 to `/inbox?signin=connected` (same browser), `/connect?state=` (other browser), or `/inbox?signin_error=<message>` |
+| GET | `/oauth/pairing?state=` | | `{"status", "provider", "email", "pair", "error"}` for the confirmation page; 404 when not waiting |
+| POST | `/oauth/confirm` | `{"state", "connect": true\|false}` | `{"status": "connected", "email"}` (attached to the starting viewer) or `{"status": "cancelled"}` (Google token revoked); 404 for an unknown or expired state, 409 when not waiting |
 | GET | `/mailboxes` | | `[Mailbox]` (this viewer's only) |
 | POST | `/mailboxes/{id}/check` | | `202` poll now |
 | POST | `/mailboxes/{id}/pause` / `/resume` | | `Mailbox` |
 | DELETE | `/mailboxes/{id}` | `?purge=true` also deletes every analysis from it | `204` |
 
-Credentials are encrypted at rest (AES-256-GCM) and never returned. A custom host must resolve
-to a public address and use port 993 (implicit TLS); the connection is pinned to the checked IP.
+Only the refresh token is stored, encrypted at rest (AES-256-GCM), and it is never returned.
 
 ## SSE: `GET /analyses/{id}/events`
 

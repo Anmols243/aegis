@@ -108,7 +108,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           <Link href="/inbox" className="text-lime underline-offset-4 hover:underline">
             Inbox
           </Link>{" "}
-          page, disconnect a mailbox and tick &quot;also delete all analyses from this mailbox&quot;. The stored credential is deleted immediately, and Google access is revoked at Google.
+          page, disconnect a mailbox and tick &quot;also delete all analyses from this mailbox&quot;. The stored sign-in token is deleted immediately; for Google accounts, access is also revoked at Google.
         </li>
         <li>Email text is deleted automatically after the retention period.</li>
         <li>For Microsoft accounts, also remove AEGIS under your account&apos;s app permissions (Microsoft offers no way for an app to give its access back).</li>

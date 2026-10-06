@@ -19,7 +19,7 @@ backend/aegis/
   api/routes.py      HTTP API v1 (contract: docs/API.md), SSE progress stream
   core/              settings, JSON logging, event bus, security (auth, rate limit, body limit, headers)
   db/                SQLAlchemy 2 async models + session (SQLite, WAL)
-  providers/         llm.py (Featherless), agentboxd.py (inbox API, HMAC), imap.py, google.py (OAuth + Gmail API)
+  providers/         llm.py (Featherless), agentboxd.py (inbox API, HMAC), oauth.py (PKCE sign-in), google.py (Gmail API), microsoft.py (Graph)
   pipeline/          parse, triage, signals, forensic, vision, sandbox, graph, arbiter, report, runner
   services/          analysis lifecycle, campaigns graph, red team, samples, abuse report
   workers/           DB-backed job queue, AgentBoxD poller
@@ -116,30 +116,40 @@ as shared infrastructure. Red-team variants stay out of the graph.
   id (64-bit random) or share link. Campaign grouping still uses private mail (better threat intel),
   but other viewers see only `{"private": true, strength, why}` for it and a `hidden_count`.
   The stored campaign note never quotes another email's subject.
-- **Mailboxes** (`providers/imap.py`, `services/mailboxes.py`, `workers/mailbox.py`). IMAP over TLS
-  on port 993 only; the server must resolve to a public address and the socket is pinned to that IP.
-  App passwords are encrypted with AES-256-GCM (`core/crypto.py`), associated data = mailbox id.
-  The cursor starts at the inbox's UIDNEXT when connecting (new mail only); messages are fetched with
-  `BODY.PEEK` (never marked read); the owner's address is replaced with `[your address]` before the
-  email is stored or analyzed. After a verdict, SCAM gets a label plus a star or flag and SUSPICIOUS
-  a label (Gmail labels via X-GM-LABELS, IMAP keywords elsewhere). A UIDVALIDITY change resets the
-  cursor and never labels a possibly different message.
-- **Sign in with Google** (`providers/google.py`). Authorization code flow with PKCE (S256) and a
-  one-time `state` bound to the viewer that started it (in memory, 10 minutes). One scope,
-  `gmail.modify`; a consent without it is refused. Only the refresh token is stored (AES-256-GCM);
-  access tokens stay in memory. The cursor is the Gmail `historyId` at sign-in; polling reads
-  `history.list` (messageAdded, INBOX, sent and drafts skipped), fetches `format=raw`, and labels with
-  `messages.modify` (`AEGIS/Scam` + STARRED, `AEGIS/Suspicious`). An expired history id restarts at
-  "now". Disconnect revokes the token at Google. The callback goes through the Next.js proxy so the
-  viewer cookie applies.
+- **Mailboxes** (`services/mailboxes.py`, `workers/mailbox.py`). Only Sign in with Google and Sign
+  in with Microsoft; IMAP and app passwords were removed (DECISIONS D11). Only the refresh token is
+  stored, encrypted with AES-256-GCM (`core/crypto.py`), associated data = mailbox id; access tokens
+  stay in memory. Polling reads new mail only from a per-provider cursor (`Mailbox.last_uid`),
+  downloads the raw MIME (never marked read), replaces the owner's address with `[your address]`
+  before the email is stored or analyzed, and de-duplicates by
+  `external_id = oa:{mailbox_id}:{message_id}`. After a verdict, SCAM gets a label plus a star or
+  flag and SUSPICIOUS a label. A provider with no client id and secret configured is hidden.
+- **Sign-in flow** (`providers/oauth.py`, shared). Authorization code flow with PKCE (S256) and a
+  one-time `state` bound to the viewer that started it (in memory, 10 minutes, single process).
+  Status moves `pending, exchanging` then `connected` (same browser) or `confirm, saving, connected`
+  (other browser), or `cancelled` / `error`. A consent without the mail scope is refused. Microsoft
+  rotates refresh tokens; the new one is re-encrypted on each refresh. The callback goes through the
+  Next.js proxy so the viewer cookie applies.
+- **Google** (`providers/google.py`). Scope `gmail.modify` only. The cursor is the Gmail
+  `historyId` at sign-in; polling reads `history.list` (messageAdded, INBOX, sent and drafts
+  skipped), fetches `format=raw`, and labels with `messages.modify` (`AEGIS/Scam` + STARRED,
+  `AEGIS/Suspicious`). An expired history id restarts at "now". Disconnect revokes the token at
+  Google.
+- **Microsoft** (`providers/microsoft.py`, Graph v1.0, `common` tenant). Scopes `offline_access
+  Mail.ReadWrite User.Read`; Mail.ReadWrite is the narrowest scope that can set categories. The
+  cursor is the received time (epoch seconds) at sign-in; polling lists inbox messages with
+  `receivedDateTime ge` (drafts skipped), de-duplicates same-second messages by id, and fetches
+  `/messages/{id}/$value`. Tagging adds category `AEGIS/Scam` (+ flagged) or `AEGIS/Suspicious` and
+  keeps existing categories. Graph has no per-app revoke, so disconnect deletes the token and the
+  UI links to https://account.live.com/consent/Manage.
 - **Sign-in from an app's built-in browser.** Google refuses to sign in inside embedded browsers, so
-  "Continue with Google" is a plain link that opens a new tab (hosts hand it to the system browser;
-  a copy-link fallback covers the rest). If Google returns to the browser that started, the mailbox
-  connects at once. If it returns to a different browser, the tokens are held in memory and that
-  browser shows `/connect/google` with the email and a 4-digit pairing code that the starting window
-  also shows; only an explicit "Codes match, connect" attaches the mailbox to the session that
-  started (never to the confirming browser). Cancel revokes the token. The starting window polls
-  `/oauth/google/status` and updates by itself.
+  "Continue with" is a plain link that opens a new tab (hosts hand it to the system browser; a
+  copy-link fallback covers the rest). If the provider returns to the browser that started, the
+  mailbox connects at once. If it returns to a different browser, the tokens are held in memory and
+  that browser shows `/connect?state=` with the email and a 4-digit pairing code that the starting
+  window also shows; only an explicit "Codes match, connect" attaches the mailbox to the session that
+  started (never to the confirming browser). Cancel revokes the token (Google). The starting window
+  polls `/oauth/status` and updates by itself.
 - **Retention** (`services/analysis.py: purge_expired`, hourly). Private analyses older than their
   retention (mailbox setting, else `PRIVATE_RETENTION_DAYS`) lose raw message, body, quoted evidence,
   entities of legitimate mail, link details, AI summary, reply card and screenshot; the verdict stays.

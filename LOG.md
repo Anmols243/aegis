@@ -2,6 +2,30 @@
 
 Newest first.
 
+## 2026-10-07: Docs for Google + Microsoft sign-in
+
+- **Changed:** README (features, privacy bullets, env table with `MICROSOFT_*`, Microsoft setup
+  steps, limits), ARCHITECTURE (providers, mailboxes and sign-in sections), docs/API.md (generic
+  `/oauth/{provider}/*` routes, `/oauth/status`, `/oauth/pairing`, `/oauth/confirm`, Mailbox shape
+  with `manage_url`, `POST /mailboxes` removed), DECISIONS D11, privacy page delete wording,
+  CLAUDE.md test count (84 to 82).
+- **Why:** The docs still described IMAP and app passwords and Google-only route names after
+  commit `894acab`.
+- **Verified:** Every route, status, scope, label mode and error path in the docs checked against
+  `api/routes.py`, `services/mailboxes.py` and `providers/{oauth,google,microsoft}.py`. 82 backend
+  tests pass. No code changed apart from one sentence of UI copy.
+
+## 2026-10-06: Sign in with Microsoft, IMAP removed
+
+- **Changed:** `providers/oauth.py` (shared PKCE flow), `providers/microsoft.py` (Graph: new mail by
+  received time, categories + flag), generic `/oauth/{provider}/*` routes and `/connect?state=`;
+  `providers/imap.py` and `POST /mailboxes` deleted; DotPattern site background. See D11.
+- **Why:** Google and Microsoft cover most users with no passwords; Yahoo and iCloud have no usable
+  mail sign-in for apps.
+- **Verified:** 82 backend tests (7 in `test_oauth.py` with fake Google and Graph); mutation check
+  18/18 caught.
+- **Not verified:** Microsoft flow in a browser, the dot background in a browser, any real account.
+
 ## 2026-10-06: Sign in with Google for Gmail
 
 - **Changed:** `providers/google.py` (OAuth + PKCE, Gmail history polling, labels, revoke),

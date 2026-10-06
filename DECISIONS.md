@@ -94,3 +94,20 @@ Append-only. A superseded decision gets a new entry; old entries are not rewritt
   matching 4-digit code in the browser that holds the Google account. A sign-in link someone else
   started and sent to a victim would still need the victim to press "Codes match, connect" against a
   warning; that social-engineering risk is accepted and stated on the page.
+
+## D11 (Oct 6, 2026): Sign in with Google and Microsoft only (supersedes D8)
+
+- **Context:** App passwords stayed the main source of friction (D10), and Outlook.com users had no
+  path at all because Microsoft requires OAuth for IMAP. Yahoo requires Yahoo's approval before an
+  app may request mail scopes, and iCloud offers no mail sign-in for third-party apps.
+- **Decision:** Remove IMAP and app passwords entirely. Support exactly two providers through one
+  shared PKCE flow (`providers/oauth.py`): Google (`gmail.modify`, Gmail API) and Microsoft
+  (`offline_access Mail.ReadWrite User.Read`, Microsoft Graph, `common` tenant so personal and work
+  accounts both work). Mail.ReadWrite is the narrowest Graph scope that can set categories and
+  flags. Yahoo and iCloud users forward mail to the AEGIS inbox (AgentBoxD) or paste it. The
+  built-in-browser pairing flow from D10 applies to both providers (`/connect?state=`).
+- **Consequences:** No passwords are ever handled; a single sign-in for most users. Graph has no
+  per-app revoke, so disconnecting a Microsoft mailbox deletes the token and points the user to
+  https://account.live.com/consent/Manage. Microsoft rotates refresh tokens, so each refresh may
+  rewrite the stored (encrypted) token. Existing IMAP mailboxes stop polling and ask the user to
+  reconnect. Each deployment needs its redirect URI registered on both OAuth clients.
