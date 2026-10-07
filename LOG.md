@@ -2,6 +2,89 @@
 
 Newest first.
 
+## 2026-10-07: HUD corner marks follow the rounded corners
+
+- **Changed:** `app/globals.css` `.hud::before`: the corner marks were square L-brackets (gradient
+  strokes) and clashed with the rounded panel corners. They are now a 1px rounded ring 8px inside
+  the border with radius `--hud-r - 8px` (concentric), masked to 20px at each corner. `.hud`
+  takes its radius from `--hud-r`; the two 24px panels (home red-team panel, verdict report) use
+  `[--hud-r:1.5rem]` instead of `rounded-3xl` / `rounded-[1.5rem]`.
+- **Verified:** build; computed panel radius 24px and mark radius 16px on the red-team panel,
+  `mask-composite: intersect` applied; home screenshot shows curved marks on every panel corner.
+  Hover (`.hud-interactive`) recolors through `--m` (by code, not checked in browser).
+
+## 2026-10-07: Background still choppy, follow-up
+
+- **Changed:** `liquid-metal.tsx`: 30 fps cap removed (draws every display frame again); new
+  `intensity` prop mixes the chrome toward `#0a0c0e` in the shader. `AppBackground` passes
+  `intensity={0.45}` instead of the CSS `opacity-45` class.
+- **Why:** The cap made the flow step every 2nd frame at 60 Hz and unevenly (4 or 5 frames) at
+  144 Hz, which reads as stutter; the half-res shader costs ~0.6 ms so it can run every frame.
+  CSS opacity added a full-screen layer blend per frame.
+- **Verified:** tsc, eslint, build. No long tasks on / or /analyze during a scroll. Canvas
+  720x450, wrapper opacity 1, screenshot matches the previous look. Smoothness on a real display
+  not measured.
+
+## 2026-10-07: Background performance (lag and low fps)
+
+- **Changed:** `.hud` lost `backdrop-filter: blur(6px)` (`app/globals.css`); site nav lost
+  `backdrop-blur-xl`, fill raised from 0.78 to 0.92. `liquid-metal.tsx` renders at half CSS
+  resolution (`RENDER_SCALE`) and caps drawing at 30 fps (`FRAME_MS`).
+- **Why:** With an animated background every backdrop-filter region (35 `.hud` uses plus the
+  nav) is re-blurred every frame; with the old static dots it was blurred once. Panels are 82%
+  opaque, so the blur was barely visible.
+- **Verified:** tsc, eslint, build. Shader benchmark in headless Chrome, 20 draws each: 1.1 ms
+  at 1440x900, 0.6 ms at 720x450 (so the shader alone was not the main cost here). On /analyze:
+  canvas 720x450 for a 1440x900 viewport, zero elements with a backdrop filter, screenshot
+  unchanged in look. Real-GPU frame rate not measured; headless rAF is not display-bound.
+
+## 2026-10-07: Liquid metal background replaces the animated gradient
+
+- **Changed:** new `frontend/components/ui/liquid-metal.tsx`, a port of the educalvolpz
+  "liquid-metal" WebGL2 shader from 21st.dev, chrome palette only, pointer input removed (no
+  listeners, no `uPointer`). `AppBackground` renders it at 45% opacity under the vignette.
+  `components/ui/animated-gradient.tsx` deleted (no other users). `brand.md` updated.
+- **Why:** User asked for this background across the site, not reacting to the mouse.
+- **Verified:** `tsc --noEmit`, eslint, `npm run build`. WebGL2 canvas at 1440x900; two
+  screenshots 2s apart differ (animating). Screenshots of / and /analyze: copy and panels
+  readable. 25% opacity was tried first and the chrome texture was barely visible.
+
+## 2026-10-07: Animated gradient background
+
+- **Changed:** new `frontend/components/ui/animated-gradient.tsx`, a port of the componentry
+  "animated-gradient" WebGL2 shader from 21st.dev (Edge shape, Aurora preset parameters, AEGIS
+  colors `#0a0c0e` / `#121a08` / `#d9ff3d`). `AppBackground` renders it at 25% opacity under the
+  existing vignette, replacing the dot pattern. `brand.md` updated (it still named `SonarGrid`).
+- **Why:** User asked for that background, whole site, brand lime, toned down.
+- **Notes:** Renders at 1x pixel ratio to keep the full-screen shader cheap. Reduced motion draws
+  one still frame; no WebGL2 leaves the plain page background.
+- **Verified:** `tsc --noEmit`, eslint, `npm run build`. Canvas present with a WebGL2 context at
+  1440x900. Screenshots of /, /analyze (1440px) and / (390px): hero copy and panels readable.
+  40% opacity was tried first and washed out the hero body text.
+
+## 2026-10-07: Border beam turns corners smoothly
+
+- **Changed:** `frontend/components/ui/border-beam.tsx` rewritten. The streak is now six stacked
+  dashes on an SVG rounded-rect stroke (sized by `ResizeObserver`), driven by one `motion` value,
+  instead of a 90px square riding `offset-path` with auto-rotate under a ring mask. Props unchanged.
+- **Why:** At each rounded corner the square spun 90 degrees over a ~30px arc, so the masked slice
+  jumped (visible jitter). A dash follows the curve exactly with no rotation.
+- **Verified:** `tsc --noEmit`, eslint, `npm run build`. On /analyze, sampled the head dash offset
+  over 120 frames: monotonic, no stalled frames. Screenshot caught the streak mid-corner, following
+  the curve. Applies to all three users (analyze form, red team, verdict report).
+- **Follow-up:** the streak restarted at the top-left corner (the path start) because the dash
+  pattern period was dash + perimeter, so the tail could not wrap. Gap is now perimeter - dash.
+  Verified by freezing a dash 30px past the start: one unbroken streak from the left edge, round
+  the corner, onto the top edge.
+
+## 2026-10-07: Analyze form border beam stays on the panel
+
+- **Changed:** `frontend/components/aegis/analyze-form.tsx`, `self-start` on the form's `BorderBeam`.
+- **Why:** As a grid item the beam wrapper stretched to the taller samples column, so the streak
+  traced an invisible box below the form panel.
+- **Verified:** `npm run build`; at 1440px the wrapper and form bounds now match (277 to 773 px,
+  row 277 to 953) and a screenshot shows the streak on the panel edge.
+
 ## 2026-10-07: Docs for Google + Microsoft sign-in
 
 - **Changed:** README (features, privacy bullets, env table with `MICROSOFT_*`, Microsoft setup

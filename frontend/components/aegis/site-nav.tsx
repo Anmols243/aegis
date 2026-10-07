@@ -15,7 +15,7 @@ const LINKS = [
 export function SiteNav() {
   const pathname = usePathname()
   return (
-    <header className="sticky top-0 z-40 border-b border-hair bg-[rgba(10,12,14,0.78)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-hair bg-[rgba(10,12,14,0.92)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-6">
         <Link href="/" className="shrink-0 font-display text-[19px] font-extrabold tracking-tight text-ink sm:text-2xl">
           AEGIS<span className="text-lime">.</span>

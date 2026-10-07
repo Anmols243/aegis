@@ -34,7 +34,7 @@ export function VerdictReport({ analysis, mode = "full" }: { analysis: Analysis;
         </p>
       ) : null}
       <BorderBeam className="rounded-[1.5rem]" radius={24} duration={9} colorFrom={meta ? meta.color : "#d9ff3d"}>
-        <section className="hud grid gap-6 rounded-[1.5rem] p-5 sm:p-7 md:grid-cols-[auto_1fr] md:items-center" aria-label="Verdict">
+        <section className="hud grid gap-6 p-5 [--hud-r:1.5rem] sm:p-7 md:grid-cols-[auto_1fr] md:items-center" aria-label="Verdict">
           <div className="flex justify-center">
             <ScoreGauge score={v?.score ?? a.score} label={label} />
           </div>

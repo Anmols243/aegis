@@ -121,7 +121,7 @@ export default function LandingPage() {
 
       <section className="mx-auto max-w-5xl px-4 pb-24 sm:px-6">
         <BorderBeam className="rounded-3xl" radius={24} duration={9}>
-          <div className="hud grid gap-6 rounded-3xl p-7 sm:p-9 md:grid-cols-[1.2fr_1fr] md:items-center">
+          <div className="hud grid gap-6 p-7 [--hud-r:1.5rem] sm:p-9 md:grid-cols-[1.2fr_1fr] md:items-center">
             <div>
               <p className="label-mono mb-3 text-lime">Built to be attacked</p>
               <h2 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">A red team that never sleeps.</h2>

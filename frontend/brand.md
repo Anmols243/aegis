@@ -41,8 +41,9 @@ the sonar grid) is lime. Tailwind color utilities: `lime`, `scam`, `susp`,
   solid lime with black text.
 - `.evidence-mark`: inline highlight of quoted evidence in an email
   (`data-sev="high|medium|low"`).
-- `SonarGrid` (`components/ui/sonar-grid.tsx`): app-wide fixed background;
-  clicks on empty space send a ping.
+- `LiquidMetal` (`components/ui/liquid-metal.tsx`): WebGL2 liquid-chrome
+  surface, used by `AppBackground` as the app-wide fixed background at 45%
+  opacity under a vignette. Ignores the pointer. Still frame under reduced motion.
 - `BorderBeam` (`components/ui/border-beam.tsx`): lime streak orbiting the border
   of key panels at constant speed.
 - `DotPattern` (`components/ui/dot-pattern.tsx`): faded dot grid behind
@@ -51,6 +52,6 @@ the sonar grid) is lime. Tailwind color utilities: `lime`, `scam`, `susp`,
 ## Rules
 
 - Lime is the only accent. Verdict colors appear only on verdicts and severities.
-- Motion respects `prefers-reduced-motion` (beams hidden, sonar static, transitions off).
+- Motion respects `prefers-reduced-motion` (beams hidden, background still, transitions off).
 - Focus is always visible: 2px lime outline.
 - No em or en dashes in copy.
