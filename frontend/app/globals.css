@@ -139,32 +139,33 @@
 }
 
 @layer components {
-  /* HUD panel: dark surface, hairline border, lime viewfinder marks in the corners */
+  /* HUD panel: dark surface, hairline border, lime viewfinder marks in the corners.
+     Set --hud-r (not a rounded-* class) to change the radius, so the marks stay concentric. */
   .hud {
     --m: rgba(217, 255, 61, 0.35);
+    --hud-r: 1.25rem;
     position: relative;
     background: rgba(12, 14, 17, 0.82);
     border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 1.25rem;
-    backdrop-filter: blur(6px);
+    border-radius: var(--hud-r);
     transition: border-color 0.2s;
   }
+  /* The marks are the corners of a rounded ring 8px inside the border, radius reduced by the
+     same 8px so each mark follows the panel's curve; the mask keeps only 20px at each corner. */
   .hud::before {
+    --len: 20px;
     content: "";
     position: absolute;
     inset: 8px;
     pointer-events: none;
     z-index: 1;
-    background:
-      linear-gradient(var(--m), var(--m)) top left / 12px 1px,
-      linear-gradient(var(--m), var(--m)) top left / 1px 12px,
-      linear-gradient(var(--m), var(--m)) top right / 12px 1px,
-      linear-gradient(var(--m), var(--m)) top right / 1px 12px,
-      linear-gradient(var(--m), var(--m)) bottom left / 12px 1px,
-      linear-gradient(var(--m), var(--m)) bottom left / 1px 12px,
-      linear-gradient(var(--m), var(--m)) bottom right / 12px 1px,
-      linear-gradient(var(--m), var(--m)) bottom right / 1px 12px;
-    background-repeat: no-repeat;
+    border: 1px solid var(--m);
+    border-radius: max(0px, calc(var(--hud-r) - 8px));
+    transition: border-color 0.2s;
+    mask:
+      linear-gradient(to right, #000 var(--len), transparent var(--len) calc(100% - var(--len)), #000 calc(100% - var(--len))),
+      linear-gradient(to bottom, #000 var(--len), transparent var(--len) calc(100% - var(--len)), #000 calc(100% - var(--len)));
+    mask-composite: intersect;
   }
   .hud-interactive:hover {
     --m: rgba(217, 255, 61, 0.95);
