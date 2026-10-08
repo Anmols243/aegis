@@ -72,6 +72,19 @@ def test_other_users_related_mail_is_anonymised(client):
     assert any(c["hidden_count"] >= 1 for c in camps)
 
 
+def test_campaign_ids_unique_for_close_submissions(client):
+    # ids start with a millisecond timestamp, so campaigns seeded seconds apart
+    # used to share an id (duplicate React keys on /campaigns)
+    ids = [submit(client, BY_ID[s]["raw"], A)
+           for s in ("paypal-phish", "ceo-gift-cards", "paypal-phish", "ceo-gift-cards")]
+    for aid in ids:
+        wait_done(client, aid)
+    camps = client.get("/api/v1/campaigns", headers=A).json()["campaigns"]
+    cids = [c["id"] for c in camps]
+    assert len(cids) >= 2 and len(cids) == len(set(cids))
+    assert all(a["created_at"] for c in camps for a in c["analyses"])
+
+
 def test_retention_purges_private_content(client):
     aid = submit(client, PHISH, A)
     wait_done(client, aid)

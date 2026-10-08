@@ -19,6 +19,7 @@ from urllib.parse import urlsplit
 from sqlalchemy import delete, select
 
 from ..db.models import Analysis, Entity
+from ..db.session import iso
 
 WEBMAIL = {"gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com",
            "yahoo.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com",
@@ -170,7 +171,9 @@ async def campaigns(session, viewer: str | None = None) -> dict:
     out, nodes, links, seen_nodes = [], [], [], set()
     for members in sorted(groups.values(), key=lambda m: -len(m)):
         ordered_all = sorted(members, key=lambda m: meta[m]["created_at"])
-        cid = "c_" + ordered_all[0].split("_", 1)[-1][:8]
+        # hash the whole id: its leading hex is a timestamp, so a prefix collides
+        # for analyses created within seconds of each other
+        cid = "c_" + hashlib.sha256(ordered_all[0].encode()).hexdigest()[:10]
         ordered = [m for m in ordered_all if visible(m)]
         if not ordered:
             continue  # nothing this viewer may see
@@ -181,7 +184,8 @@ async def campaigns(session, viewer: str | None = None) -> dict:
         kinds = sorted({k for k, _ in shared_items}) or ["infrastructure"]
         out.append({
             "id": cid,
-            "analyses": [{"id": m, "subject": meta[m]["subject"], "label": meta[m]["label"]}
+            "analyses": [{"id": m, "subject": meta[m]["subject"], "label": meta[m]["label"],
+                          "created_at": iso(meta[m]["created_at"])}
                          for m in ordered],
             "hidden_count": len(ordered_all) - len(ordered),
             "infra": [{"kind": k, "value": v} for k, v in shared_items[:20]],
