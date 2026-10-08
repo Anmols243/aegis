@@ -198,10 +198,15 @@ export interface LiveInboxItem {
   subject: string | null
   /** Masked, e.g. `sh***@gmail.com`. */
   sender: string | null
+  /** First words of the body, partially censored. */
+  preview: string
   replied: boolean
   private: boolean
   stages: { name: StageName | string; status: StageStatus }[]
 }
+
+/** One inbox email dissected for /live: an Analysis, partially censored, with `id` null. */
+export type LiveInboxDetail = Analysis & { key: string }
 
 export interface LiveInbox {
   enabled: boolean
@@ -418,6 +423,7 @@ export const api = {
   health: () => request<Health>("/health"),
   publicConfig: () => request<PublicConfig>("/config/public"),
   inboxLive: () => request<LiveInbox>("/inbox/live"),
+  inboxLiveDetail: (key: string) => request<LiveInboxDetail>(`/inbox/live/${encodeURIComponent(key)}`),
   stats: () => request<Stats>("/stats"),
   samples: () => request<Sample[]>("/samples"),
 

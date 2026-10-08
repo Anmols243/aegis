@@ -207,22 +207,34 @@ def test_inbox_live_feed(settings_env, fake_llm, no_network, public):
     event = {"type": "message.received", "data": {"message": {
         "id": "msg_live", "inbox_id": "inb_1", "subject": "Verify",
         "from": "Shabeeh Khan <shabeeh.k@gmail.com>",
-        "text": "Verify your identity immediately at http://paypa1-secure.com/v"}}}
+        "text": ("Verify your identity immediately at http://paypa1-secure.com/v or call "
+                 "+1 800-555-0142. Reply to shabeeh.k@gmail.com.")}}}
     body = json.dumps(event).encode()
     with TestClient(create_app()) as c:
         ok = c.post("/api/v1/ingest/agentboxd", content=body,
                     headers={"X-Mailroom-Signature": _sign(body, "whsec")})
         wait_done(c, ok.json()["id"])
         live = c.get("/api/v1/inbox/live").json()
+        detail = c.get(f"/api/v1/inbox/live/{live['items'][0]['key']}").json()
+        assert c.get("/api/v1/inbox/live/0123456789ab").status_code == 404
+        assert c.get("/api/v1/inbox/live/not-a-key").status_code == 404
     assert live["enabled"] is True and live["address"] == "test@inbox.example"
     [item] = live["items"]
     assert item["status"] == "done" and item["label"] and item["stages"] and item["key"]
-    if public:
-        assert item["id"] == ok.json()["id"] and item["subject"] == "Verify"
-        assert item["sender"] == "sh***@gmail.com"       # masked, no display name
-    else:
-        assert item["private"] is True
-        assert item["id"] is None and item["subject"] is None and item["sender"] is None
+    # a test inbox: subject, masked sender and a censored preview are always shown
+    assert item["subject"] == "Verify" and item["sender"] == "sh***@gmail.com"
+    assert "paypa1-secure.com" in item["preview"]           # evidence stays
+    assert "0142" not in item["preview"] and "***42" in item["preview"]
+    assert "shabeeh.k@" not in item["preview"]
+    # the id (opens the uncensored case) only for public inbox mail
+    assert item["id"] == (ok.json()["id"] if public else None)
+    assert item["private"] is (not public)
+    # the dissection works either way and is censored
+    assert detail["status"] == "done" and detail["label"] and detail["stages"]
+    assert detail["id"] is None and detail["share_token"] is None
+    dumped = json.dumps(detail)
+    assert "shabeeh.k@gmail.com" not in dumped and "Shabeeh Khan" not in dumped
+    assert "555-0142" not in dumped and "paypa1-secure.com" in dumped
 
 
 def test_inbox_live_disabled_without_agentboxd(client):

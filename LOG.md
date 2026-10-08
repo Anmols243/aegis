@@ -2,6 +2,31 @@
 
 Newest first.
 
+## 2026-10-08: Held scam mail, censored details and dissection for every inbox email
+
+- **Found:** "only 2 emails" was AgentBoxD screening. The workspace has "Agents get only screened
+  mail" on: mail its check flags (phishing 0.98 on the test scams) is `held`, `wait` never returns
+  it, and reads return metadata only (subject `[held: phishing]`, no text); `/raw` answers
+  `409 message_withheld`, `include_held=true` answers `403` without the `messages:release` permission
+  (agentboxd.com/docs/api#screening). Also seen: `429 rate_limited` (120 req/min) because another
+  backend polls the same inbox with the same key; this backend logged only the 429s.
+- **Changed:** the poller asks with `include_unscreened=true` (no permission needed) so mail arrives
+  before screening finishes, adds `include_held=true` when `AGENTBOXD_INCLUDE_HELD=true` (needs a key
+  with `messages:release`), skips a message that still comes back `withheld` (logged, instead of
+  analyzing an empty body), and on 429 waits the API's `retry_after_seconds`.
+- **Changed:** `/live` shows every inbox email's subject, masked sender and a censored preview, and
+  dissects every one (new `GET /inbox/live/{key}`: the case, partially censored server-side, id and
+  share token null). New `services/livefeed.py`: names to initials, addresses to `sh***@domain`,
+  digit runs to `***42`, long tokens to `AbCd***`; links and domains kept as evidence. First names
+  inside body text are not detected. The dissection polls every 1.5s and shows the pipeline, the
+  censored email and the verdict report (share mode). The page copy now says the inbox is public.
+- **Verified:** pytest 93 passed (feed and detail censoring in both modes, 404s, censor rules,
+  retry-after, screening opt-ins). tsc, eslint, build. `include_unscreened` accepted by AgentBoxD
+  (read-only probe, HTTP 200). Private mode (`INBOX_PUBLIC` unset) with one simulated signed webhook
+  (no real mail, record deleted after): the row showed subject, masked sender and preview; the panel
+  streamed the pipeline, the censored email and the verdict. My backend now runs with
+  `AGENTBOXD_POLL=false` so it does not compete with the other poller.
+
 ## 2026-10-08: Auto inbox checker fixed and made default; live dissection on /live
 
 - **Fixed (real bug):** the AgentBoxD poller never ingested a message. `GET /v1/messages/{id}` returns
