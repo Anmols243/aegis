@@ -5,6 +5,8 @@ import hashlib
 import hmac
 import json
 
+import pytest
+
 from aegis.core import config as config_mod
 
 from .conftest import wait_done
@@ -190,6 +192,42 @@ def test_webhook_signature_and_idempotency(settings_env, fake_llm, no_network):
         a = wait_done(c, ok.json()["id"])
         assert a["source"] == "webhook" and a["label"] == "SCAM"
         assert a["verdict"]["contributions"].get("agentboxd") is not None
+
+
+@pytest.mark.parametrize("public", [False, True])
+def test_inbox_live_feed(settings_env, fake_llm, no_network, public):
+    from fastapi.testclient import TestClient
+
+    from aegis.main import create_app
+    for k, v in {"AGENTBOXD_WEBHOOK_SECRET": "whsec", "AGENTBOXD_API_KEY": "k",
+                 "AGENTBOXD_INBOX_ID": "inb_1", "AGENTBOXD_INBOX_ADDRESS": "test@inbox.example",
+                 "AGENTBOXD_AUTO_REPLY": "false", "INBOX_PUBLIC": str(public).lower()}.items():
+        settings_env.setenv(k, v)
+    config_mod.get_settings.cache_clear()
+    event = {"type": "message.received", "data": {"message": {
+        "id": "msg_live", "inbox_id": "inb_1", "subject": "Verify",
+        "from": "Shabeeh Khan <shabeeh.k@gmail.com>",
+        "text": "Verify your identity immediately at http://paypa1-secure.com/v"}}}
+    body = json.dumps(event).encode()
+    with TestClient(create_app()) as c:
+        ok = c.post("/api/v1/ingest/agentboxd", content=body,
+                    headers={"X-Mailroom-Signature": _sign(body, "whsec")})
+        wait_done(c, ok.json()["id"])
+        live = c.get("/api/v1/inbox/live").json()
+    assert live["enabled"] is True and live["address"] == "test@inbox.example"
+    [item] = live["items"]
+    assert item["status"] == "done" and item["label"] and item["stages"] and item["key"]
+    if public:
+        assert item["id"] == ok.json()["id"] and item["subject"] == "Verify"
+        assert item["sender"] == "sh***@gmail.com"       # masked, no display name
+    else:
+        assert item["private"] is True
+        assert item["id"] is None and item["subject"] is None and item["sender"] is None
+
+
+def test_inbox_live_disabled_without_agentboxd(client):
+    assert client.get("/api/v1/inbox/live").json() == {
+        "enabled": False, "address": None, "public": False, "items": []}
 
 
 def test_webhook_disabled_without_secret(client):

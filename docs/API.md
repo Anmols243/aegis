@@ -72,6 +72,7 @@ Severity: `high | medium | low | info`.
 |---|---|---|---|
 | GET | `/health` | | `{"ok": true, "version": "2.0.0", "llm": true, "agentboxd": true, "vision": true}` |
 | GET | `/config/public` | | `{"inbox_address": "zesty-willow-3025@homingbox.net" or null, "features": {"vision": true, "inbox": true}}` |
+| GET | `/inbox/live` | | `{"enabled": true, "address": "", "public": false, "items": [{"key": "opaque", "id": "a_..." or null, "created_at": "", "status": "queued", "label": null, "score": null, "duration_s": null, "subject": "" or null, "sender": "sh***@gmail.com" or null, "replied": false, "private": true, "stages": [{"name": "parse", "status": "done"}]}]}`. Latest 20 (max 50, `?limit=`) mails that reached the AgentBoxD inbox. `id`, `subject` and the masked `sender` only for public inbox mail (`INBOX_PUBLIC=true`). `{"enabled": false, ...}` when AgentBoxD is not configured. |
 | POST | `/analyses` | JSON `{"raw": "<pasted email or full .eml source>"}` or multipart `file` (.eml/.txt, max 2 MB) | `202 {"id": "...", "status": "queued"}` |
 | GET | `/analyses` | `?limit=50&cursor=<id>&label=SCAM&q=text` | `{"items": [AnalysisSummary], "next_cursor": null}` |
 | GET | `/analyses/{id}` | | `Analysis` |

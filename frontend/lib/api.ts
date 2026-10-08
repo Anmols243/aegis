@@ -185,6 +185,31 @@ export interface PublicConfig {
   features: Record<string, boolean>
 }
 
+export interface LiveInboxItem {
+  /** Opaque, stable row key (not the analysis id). */
+  key: string
+  /** Present only for public inbox mail (INBOX_PUBLIC=true). */
+  id: string | null
+  created_at: string | null
+  status: AnalysisStatus
+  label: Label | null
+  score: number | null
+  duration_s: number | null
+  subject: string | null
+  /** Masked, e.g. `sh***@gmail.com`. */
+  sender: string | null
+  replied: boolean
+  private: boolean
+  stages: { name: StageName | string; status: StageStatus }[]
+}
+
+export interface LiveInbox {
+  enabled: boolean
+  address: string | null
+  public: boolean
+  items: LiveInboxItem[]
+}
+
 export interface Stats {
   total: number
   by_label: Partial<Record<Label, number>>
@@ -392,6 +417,7 @@ function qs(params: Record<string, string | number | null | undefined>): string 
 export const api = {
   health: () => request<Health>("/health"),
   publicConfig: () => request<PublicConfig>("/config/public"),
+  inboxLive: () => request<LiveInbox>("/inbox/live"),
   stats: () => request<Stats>("/stats"),
   samples: () => request<Sample[]>("/samples"),
 
