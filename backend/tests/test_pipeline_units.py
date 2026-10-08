@@ -178,3 +178,40 @@ def test_prose_strips_dashes_but_excerpts_stay_verbatim():
     assert rep.findings[0].claim == "a, b"
     assert rep.findings[0].excerpt == "pay now \u2014 today"
     assert rep.summary == "x, y"
+
+
+# --------------------------------------------------------------------------- agentboxd client
+
+@pytest.mark.parametrize("body", [
+    {"id": "m1", "from": "a@b.co", "text": "hi", "data": None},       # live API: bare message
+    {"data": {"id": "m1", "from": "a@b.co", "text": "hi"}},            # enveloped
+])
+def test_agentboxd_get_message_unwraps(body, monkeypatch):
+    import asyncio
+
+    import httpx
+
+    from aegis.core.config import Settings
+    from aegis.providers.agentboxd import AgentBoxD
+
+    ab = AgentBoxD(Settings(agentboxd_api_key="k", agentboxd_inbox_id="i"))
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, json=body))
+    monkeypatch.setattr(ab, "_client", lambda timeout=30.0: httpx.AsyncClient(
+        base_url="https://x", transport=transport))
+    msg = asyncio.run(ab.get_message("m1"))
+    assert msg["id"] == "m1" and msg["text"] == "hi"
+
+
+def test_poller_steps_past_inclusive_since():
+    from aegis.workers.poller import _after
+    assert _after("2026-10-08T14:17:06.034Z") == "2026-10-08T14:17:06.035Z"
+    assert _after("2026-10-08T14:17:06.999Z") == "2026-10-08T14:17:07.000Z"
+
+
+def test_inbox_polling_default():
+    from aegis.core.config import Settings
+    base = {"agentboxd_api_key": "k", "agentboxd_inbox_id": "i"}
+    assert Settings(**base).agentboxd_polling is True                       # no webhook: poll
+    assert Settings(**base, agentboxd_webhook_secret="s").agentboxd_polling is False
+    assert Settings(**base, agentboxd_webhook_secret="s", agentboxd_poll=True).agentboxd_polling
+    assert Settings(agentboxd_poll=True).agentboxd_polling is False         # not configured

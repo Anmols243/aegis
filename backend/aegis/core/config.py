@@ -72,7 +72,8 @@ class Settings(BaseSettings):
     agentboxd_webhook_secret: str | None = None
     agentboxd_inbox_id: str | None = None
     agentboxd_inbox_address: str | None = None
-    agentboxd_poll: bool = False              # long-poll the inbox instead of webhooks
+    # long-poll the inbox for new mail; unset = on unless a webhook secret is configured
+    agentboxd_poll: bool | None = None
     agentboxd_auto_reply: bool = True         # reply in-thread with the verdict card
     agentboxd_base_url: str = "https://api.agentboxd.com"
 
@@ -102,6 +103,15 @@ class Settings(BaseSettings):
     @property
     def agentboxd_configured(self) -> bool:
         return bool(self.agentboxd_api_key and self.agentboxd_inbox_id)
+
+    @property
+    def agentboxd_polling(self) -> bool:
+        """Check the inbox ourselves: explicit AGENTBOXD_POLL, else whenever no webhook delivers mail."""
+        if not self.agentboxd_configured:
+            return False
+        if self.agentboxd_poll is not None:
+            return self.agentboxd_poll
+        return not self.agentboxd_webhook_secret
 
 
 @lru_cache
