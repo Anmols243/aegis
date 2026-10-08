@@ -2,6 +2,43 @@
 
 Newest first.
 
+## 2026-10-08: Campaign operator map replaces the force graph
+
+- **Changed:** `campaigns-view.tsx`: the force-directed graph (random layout, overlapping labels) is
+  replaced by a fixed three-column operator map: emails (deduped, wrap to 2 lines, open their case),
+  an operator hub, and shared infrastructure grouped by type with coverage (`4/4` = in 4 of 4
+  emails). SVG connectors are measured from the rendered rows; hovering or focusing a row lights
+  its connectors (moving dashes, `.aegis-flow` in `globals.css`, off under reduced motion) and dims
+  rows it does not touch. The separate infrastructure and linked-email lists and the "All
+  campaigns" toggle are gone (the map and the campaign list cover them). Below `md` the columns
+  stack without connectors. `components/aegis/force-graph.tsx` deleted.
+- **Note:** `react-force-graph-2d` is no longer imported anywhere but is still in `package.json`.
+- **Verified:** tsc, eslint, build. Screenshots at 1440px (apple and gmail-sender campaigns, hover
+  on the sender row lights its path and dims the template) and 390px (stacked, scrollWidth 390).
+
+## 2026-10-08: Campaigns page redesign, duplicate campaign ids, test data cleanup
+
+- **Fixed:** duplicate React key on /campaigns. Campaign ids were `c_` + the first 8 chars of the
+  earliest member id, which is a millisecond timestamp, so campaigns seeded within ~4s collided.
+  Now `c_` + 10 hex of SHA-256 of the full id (`services/campaigns.py`). Regression test
+  `test_campaign_ids_unique_for_close_submissions` fails on the old code, passes now (83 tests).
+- **Changed:** /campaigns rebuilt (`components/aegis/campaigns-view.tsx`): stat strip, sticky campaign
+  list named by operator (sender domain, else address, domain, link, phone) with verdict bar and
+  indicator icons, detail pane with first/last seen, a graph focused on the selected campaign
+  (zoom-to-fit, capped at 2x, "All campaigns" toggle dims the others), deduped linked emails and
+  infrastructure grouped by type. New `components/aegis/force-graph.tsx` wrapper passes the graph ref
+  through `next/dynamic` and sets link distance and charge range.
+- **API:** campaign `analyses[]` gain `created_at`; graph nodes document the existing `campaign` field
+  (docs/API.md, lib/api.ts).
+- **Data:** deleted the 28 manually pasted (`source='web'`) analyses from the local
+  `backend/data/aegis.db` with their stage runs and entities (user request). Backup kept outside the
+  repo in the session scratchpad.
+- **Also:** AgentBoxD key checked read-only: valid, inbox `zesty-willow-3025@homingbox.net` active.
+  Not wired: `backend/.env` does not exist yet (user to create it).
+- **Verified:** pytest 83 passed, tsc, eslint, build. Screenshots at 1440px (focus and all-campaigns
+  graphs, settled) and 390px (no horizontal scroll). The browser console was not checked for the
+  key warning (prod build); uniqueness is covered by the test.
+
 ## 2026-10-07: HUD corner marks follow the rounded corners
 
 - **Changed:** `app/globals.css` `.hud::before`: the corner marks were square L-brackets (gradient

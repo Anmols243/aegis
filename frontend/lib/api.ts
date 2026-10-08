@@ -197,7 +197,7 @@ export interface Stats {
 
 export interface Campaign {
   id: string
-  analyses: { id: string; subject: string; label: Label | null }[]
+  analyses: { id: string; subject: string; label: Label | null; created_at?: string | null }[]
   infra: { kind: string; value: string }[]
   explanation: string
   /** Members the current viewer may not see. */
@@ -209,6 +209,8 @@ export interface GraphNode {
   kind: "analysis" | "sender" | "domain" | "url" | "phone" | "template" | string
   label: string
   verdict?: Label | null
+  /** Id of the campaign this node belongs to. */
+  campaign?: string
 }
 
 export interface GraphLink {

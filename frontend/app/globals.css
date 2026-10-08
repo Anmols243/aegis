@@ -241,6 +241,17 @@
   }
 }
 
+/* Dashes travelling along a highlighted connector (campaign operator map). */
+@keyframes aegis-flow-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.aegis-flow {
+  animation: aegis-flow-dash 0.9s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -80,7 +80,7 @@ Severity: `high | medium | low | info`.
 | GET | `/analyses/{id}/abuse-report` | | `{"markdown": "..."}` |
 | GET | `/share/{token}` | public | `Analysis` minus `email.text`, `triage`, `card_markdown` |
 | GET | `/stats` | | `{"total": 0, "by_label": {"SCAM": 0}, "last_24h": 0, "avg_duration_s": 0, "top_techniques": [{"name": "", "count": 0}], "top_brands": [{"name": "", "count": 0}], "campaigns": 0}` |
-| GET | `/campaigns` | | `{"campaigns": [{"id": "c_1", "analyses": [{"id": "", "subject": "", "label": ""}], "infra": [{"kind": "domain", "value": ""}], "explanation": ""}], "graph": {"nodes": [{"id": "a:<analysis id>" or "domain:x", "kind": "analysis|sender|domain|url|phone|template", "label": "", "verdict": "SCAM or null"}], "links": [{"source": "", "target": ""}]}}` |
+| GET | `/campaigns` | | `{"campaigns": [{"id": "c_1", "analyses": [{"id": "", "subject": "", "label": "", "created_at": ""}], "infra": [{"kind": "domain", "value": ""}], "explanation": ""}], "graph": {"nodes": [{"id": "a:<analysis id>" or "domain:x", "kind": "analysis|sender|domain|url|phone|template", "label": "", "verdict": "SCAM or null", "campaign": "c_..."}], "links": [{"source": "", "target": ""}]}}` |
 | GET | `/samples` | | `[{"id": "paypal-phish", "title": "", "description": "", "expected": "SCAM", "raw": "..."}]` |
 | POST | `/redteam/runs` | `{"sample_id": "paypal-phish"}` or `{"raw": "..."}`, `"n": 1-8`, optional `"seed"` | `202 {"id": "rt_..."}` |
 | GET | `/redteam/runs` | | `[{"id": "", "created_at": "", "status": "", "summary": {...}}]` |
