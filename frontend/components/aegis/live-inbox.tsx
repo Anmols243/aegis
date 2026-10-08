@@ -6,7 +6,7 @@ import { ArrowUpRight, Check, CheckCircle2, Copy, Loader2, Lock, Mail, MailOpen,
 import { toast } from "sonner"
 
 import { ErrorState, LoadingState, SeverityPill, VerdictBadge } from "@/components/aegis/bits"
-import { api, STAGES, type LiveInbox, type LiveInboxDetail, type LiveInboxItem, type Stage } from "@/lib/api"
+import { api, ApiError, STAGES, type LiveInbox, type LiveInboxDetail, type LiveInboxItem, type Stage } from "@/lib/api"
 import { LABEL_META, pct, seconds, timeAgo } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -280,7 +280,9 @@ function Dissection({ item, following, onFollow }: { item: LiveInboxItem; follow
         setError(null)
         if (d.status === "done" || d.status === "failed") return
       } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : "Could not open this email.")
+        if (!alive) return
+        setError(e instanceof Error ? e.message : "Could not open this email.")
+        if (e instanceof ApiError && e.status === 404) return   // purged or gone: stop polling
       }
       if (alive) timer = window.setTimeout(tick, DETAIL_POLL_MS)
     }

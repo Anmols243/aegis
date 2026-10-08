@@ -113,8 +113,14 @@ async def run(ctx: PipelineContext) -> StageResult:
         raise Skip("plain-text email: nothing to render")
     out_dir = os.path.join(ctx.settings.data_dir, "screenshots")
     os.makedirs(out_dir, exist_ok=True)
-    path = await asyncio.to_thread(_render_in_own_loop, html,
-                                   os.path.join(out_dir, f"{ctx.analysis_id}.png"))
+    try:
+        path = await asyncio.to_thread(_render_in_own_loop, html,
+                                       os.path.join(out_dir, f"{ctx.analysis_id}.png"))
+    except Exception as e:
+        # pip installs playwright without a browser; `playwright install chromium` was skipped.
+        if "Executable doesn't exist" in str(e):
+            raise Skip("screenshot browser not installed on this server") from e
+        raise
     with open(path, "rb") as f:
         b64 = base64.b64encode(f.read()).decode()
     data = await ctx.llm.chat_json(ctx.settings.model_vision, [

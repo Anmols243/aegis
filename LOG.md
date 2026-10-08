@@ -2,6 +2,26 @@
 
 Newest first.
 
+## 2026-10-09: Review fixes (sandbox stall, polling, races), vision skip, hero button
+
+- **Fixed (security):** `sandbox.classify_html` used backtracking regexes on the fetched page. A
+  512 KB page of repeated `<form>`, `<input `, `<a ` or `<title>` ran for minutes, and since it runs
+  on the event loop one malicious link froze the whole server. Rewritten as linear scans (one tag
+  pass, `find` for the title). Same results as the old code on 11 realistic pages; the adversarial
+  pages now take under 0.15 s. Tests cover behaviour and a time bound (the old code still hung past
+  40 s on the `<title>` case).
+- **Fixed:** vision skips with "screenshot browser not installed on this server" instead of failing
+  when Playwright's Chromium is missing (seen on another deployment); test added.
+- **Fixed (frontend):** cases "load more" no longer appends results from a previous filter
+  (generation ref); retry clears the old error; `/live` dissection and the red-team arena stop
+  polling on 404.
+- **Changed:** home hero button reads "Test system" (commit 43e43f9).
+- **Not fixed, by choice:** detail endpoints open private analyses by id without an ownership check
+  (by design, D9); open API without `AEGIS_API_KEY` (deployment setting); poller can skip a second
+  mail received in the same millisecond (rare; a proper fix needs an AgentBoxD list call, not worth
+  the risk before the deadline); `/stats` loads all rows (fine at demo scale).
+- **Verified:** pytest 100 passed. tsc, eslint, build. Frontend fixes not exercised in a browser.
+
 ## 2026-10-08: /live fits one screen; mailbox sign-in UI removed (D12)
 
 - **Changed:** `components/aegis/live-inbox.tsx` rebuilt for no long scroll: one-line address bar

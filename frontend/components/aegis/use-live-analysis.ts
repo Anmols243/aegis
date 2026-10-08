@@ -106,5 +106,11 @@ export function useLiveAnalysis(id: string | null) {
     }
   }, [id, attempt])
 
-  return { analysis, stages, phase, error, retry: () => setAttempt((n) => n + 1) }
+  const retry = () => {
+    setError(null)
+    setPhase("loading")
+    setAttempt((n) => n + 1)
+  }
+
+  return { analysis, stages, phase, error, retry }
 }

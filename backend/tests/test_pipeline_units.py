@@ -245,3 +245,46 @@ def test_agentboxd_screening_opt_ins():
     assert AgentBoxD(Settings(**base))._screening() == {"include_unscreened": "true"}
     assert AgentBoxD(Settings(**base, agentboxd_include_held=True))._screening() == {
         "include_unscreened": "true", "include_held": "true"}
+
+
+def test_vision_skips_when_browser_missing(monkeypatch, tmp_path):
+    import asyncio
+    from types import SimpleNamespace
+
+    from aegis.pipeline import vision
+    from aegis.pipeline.context import Skip
+
+    def missing(html, out_path):
+        raise RuntimeError("BrowserType.launch: Executable doesn't exist at /x/chrome-headless-shell")
+
+    monkeypatch.setattr(vision, "_render_in_own_loop", missing)
+    ctx = SimpleNamespace(settings=SimpleNamespace(vision_enabled=True, data_dir=str(tmp_path)),
+                          email=SimpleNamespace(html="<p>hi</p>"), analysis_id="a1")
+    with pytest.raises(Skip, match="not installed"):
+        asyncio.run(vision.run(ctx))
+
+
+def test_sandbox_classify_html():
+    from aegis.pipeline.sandbox import classify_html
+
+    phish = classify_html("<TITLE> PayPal\n Login </TITLE><form action=/x>"
+                          "<input type='password'></form>", "https://x.test/")
+    assert phish["kind"] == "credential-harvest" and phish["page_title"] == "PayPal Login"
+    assert classify_html("<form><label>Sign-in</label></form>", "https://x.test/")["has_login_form"]
+    assert classify_html('<a class=b href="/f/setup.msi">x</a>', "https://x.test/")["kind"] \
+        == "malware-drop"
+    benign = classify_html('<a href="/doc.zip?x=1">y</a><abbr>.exe</abbr>', "https://x.test/")
+    assert benign["kind"] == "benign" and not benign["has_login_form"]
+
+
+@pytest.mark.parametrize("page", ["<form>", "<input ", "<a ", "<a href=x", "<title>"])
+def test_sandbox_classify_html_is_linear(page):
+    # Regression: the old backtracking regexes took minutes on these and blocked the event loop.
+    import time
+
+    from aegis.pipeline.sandbox import MAX_BODY_BYTES, classify_html
+
+    html = page * (MAX_BODY_BYTES // len(page))
+    t = time.perf_counter()
+    classify_html(html, "https://x.test/")
+    assert time.perf_counter() - t < 2.0
