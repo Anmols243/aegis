@@ -320,56 +320,6 @@ export interface DoneEvent {
   score?: number | null
 }
 
-export type MailboxStatus = "active" | "paused" | "error"
-
-export interface Mailbox {
-  id: string
-  provider: string
-  email: string
-  host: string
-  status: MailboxStatus
-  last_checked_at: string | null
-  last_error: string | null
-  created_at: string
-  scanned: number
-  flagged: number
-  label_mode: "gmail-api" | "outlook" | string
-  retention_days: number
-  /** where the user can remove AEGIS's access at the provider */
-  manage_url: string | null
-}
-
-/** A "Sign in with ..." option; `supported` is false when the server has no client for it. */
-export interface MailboxProvider {
-  id: "google" | "microsoft" | string
-  name: string
-  covers: string
-  supported: boolean
-}
-
-/** A started sign-in: open `url` in a new tab; `pair` is shown to match the other browser. */
-export interface SignIn {
-  url: string
-  state: string
-  pair: string
-}
-
-export type SignInState = "pending" | "exchanging" | "confirm" | "saving" | "connected" | "cancelled" | "error" | "expired"
-
-export interface SignInStatus {
-  status: SignInState
-  email?: string | null
-  error?: string | null
-}
-
-export interface SignInPairing {
-  status: SignInState
-  provider: string
-  email: string | null
-  pair: string
-  error?: string | null
-}
-
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -383,10 +333,6 @@ const BASE = "/api/v1"
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await send(path, init)
   return (await res.json()) as T
-}
-
-async function requestEmpty(path: string, init?: RequestInit): Promise<void> {
-  await send(path, init)
 }
 
 async function send(path: string, init?: RequestInit): Promise<Response> {
@@ -458,26 +404,4 @@ export const api = {
   redteamRuns: () => request<RedteamRunListItem[]>("/redteam/runs"),
   redteamRun: (id: string) => request<RedteamRun>(`/redteam/runs/${encodeURIComponent(id)}`),
   redteamSummary: () => request<RedteamSummary>("/redteam/summary"),
-
-  mailboxProviders: () => request<MailboxProvider[]>("/mailbox-providers"),
-  mailboxes: () => request<Mailbox[]>("/mailboxes"),
-  signIn: (provider: string, retentionDays: number) =>
-    request<SignIn>(`/oauth/${encodeURIComponent(provider)}/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ retention_days: retentionDays }),
-    }),
-  signInStatus: (state: string) => request<SignInStatus>(`/oauth/status?state=${encodeURIComponent(state)}`),
-  signInPairing: (state: string) => request<SignInPairing>(`/oauth/pairing?state=${encodeURIComponent(state)}`),
-  signInConfirm: (state: string, connect: boolean) =>
-    request<{ status: "connected" | "cancelled"; email?: string }>("/oauth/confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state, connect }),
-    }),
-  checkMailbox: (id: string) => requestEmpty(`/mailboxes/${encodeURIComponent(id)}/check`, { method: "POST" }),
-  pauseMailbox: (id: string) => request<Mailbox>(`/mailboxes/${encodeURIComponent(id)}/pause`, { method: "POST" }),
-  resumeMailbox: (id: string) => request<Mailbox>(`/mailboxes/${encodeURIComponent(id)}/resume`, { method: "POST" }),
-  disconnectMailbox: (id: string, purge: boolean) =>
-    requestEmpty(`/mailboxes/${encodeURIComponent(id)}${purge ? "?purge=true" : ""}`, { method: "DELETE" }),
 }

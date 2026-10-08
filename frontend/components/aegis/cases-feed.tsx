@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Loader2, Mail, Search } from "lucide-react"
 
 import { EmptyState, ErrorState, LoadingState, VerdictBadge } from "@/components/aegis/bits"
-import { PrivateBadge } from "@/components/aegis/privacy-promises"
+import { PrivateBadge } from "@/components/aegis/private-badge"
 import { api, type AnalysisSummary, type Label } from "@/lib/api"
 import { LABEL_META, score100, seconds, timeAgo } from "@/lib/format"
 
@@ -18,7 +18,7 @@ const FILTERS: { key: Label | null; text: string }[] = [
 
 export function CasesFeed({ initialMine = false }: { initialMine?: boolean }) {
   const [label, setLabel] = React.useState<Label | null>(null)
-  // /cases?mine=true (linked from the Inbox page) opens with the Mine filter on.
+  // /cases?mine=true opens with the Mine filter on.
   const [mine, setMine] = React.useState(initialMine)
   const [query, setQuery] = React.useState("")
   const [q, setQ] = React.useState("")
@@ -89,7 +89,7 @@ export function CasesFeed({ initialMine = false }: { initialMine?: boolean }) {
             className="chip"
             data-active={mine}
             aria-pressed={mine}
-            title="Only emails you analyzed from this browser, including your connected mailboxes"
+            title="Only emails you analyzed from this browser"
             onClick={() => {
               setItems(null)
               setMine((m) => !m)
@@ -121,13 +121,7 @@ export function CasesFeed({ initialMine = false }: { initialMine?: boolean }) {
         <div className="hud">
           <EmptyState title={q || label || mine ? "No matching cases" : "No cases yet"}>
             {mine && !q && !label ? (
-              <>
-                Emails you paste or receive in a{" "}
-                <Link href="/inbox" className="text-lime hover:underline">
-                  connected mailbox
-                </Link>{" "}
-                show up here, visible only to this browser.
-              </>
+              "Emails you analyze show up here, visible only to this browser."
             ) : q || label ? (
               "Try another filter or search term."
             ) : (

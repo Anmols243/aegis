@@ -111,3 +111,15 @@ Append-only. A superseded decision gets a new entry; old entries are not rewritt
   https://account.live.com/consent/Manage. Microsoft rotates refresh tokens, so each refresh may
   rewrite the stored (encrypted) token. Existing IMAP mailboxes stop polling and ask the user to
   reconnect. Each deployment needs its redirect URI registered on both OAuth clients.
+
+## D12 (Oct 8, 2026): Remove the mailbox sign-in UI; the live test inbox is the inbox demo
+
+- **Decision:** The "Connect your inbox" page (`/inbox`), the sign-in confirm page (`/connect`),
+  their components, the home-page section and the mailbox privacy promises are removed. The nav's
+  Inbox link becomes Live (`/live`). The backend mailbox and OAuth routes stay, unused by the UI.
+- **Context:** The user asked to remove the page. Google and Microsoft OAuth clients were never
+  configured, so the page could not connect anything; the AgentBoxD test inbox on `/live` shows the
+  same pipeline working on real mail with no sign-in.
+- **Consequences:** Mail sent to the test inbox is shown publicly on `/live`, partially censored
+  server-side (`services/livefeed.py`); the privacy page and README say so. Restoring mailbox
+  sign-in means restoring the deleted pages from git history (commit before this change).

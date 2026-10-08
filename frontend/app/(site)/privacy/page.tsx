@@ -11,7 +11,8 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     body: (
       <ul className="flex list-disc flex-col gap-1.5 pl-5">
         <li>AEGIS has no accounts, no analytics and no ads.</li>
-        <li>Emails you analyze are private by default: unlisted, never in the public feed or campaign graph.</li>
+        <li>Emails you paste or upload are private by default: unlisted, never in the public feed or campaign graph.</li>
+        <li>Emails sent to the test inbox are shown on the public Live page, partially censored.</li>
         <li>Email text is deleted after a retention period (7 days by default). The verdict is kept.</li>
         <li>To analyze an email, its content is sent to AI models hosted by Featherless.</li>
       </ul>
@@ -24,15 +25,19 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
         <p>For each analysis AEGIS stores the email you submitted, the verdict, the evidence it cites, and how long each step took.</p>
         <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5">
           <li>
-            <strong className="text-ink">Pasted, uploaded and mailbox emails</strong> are private. After the retention period (7 days by default, or
-            what you chose when connecting a mailbox) the email text is deleted and only the verdict and its summary remain.
+            <strong className="text-ink">Pasted and uploaded emails</strong> are private. After the retention period (7 days by default) the email
+            text is deleted and only the verdict and its summary remain.
           </li>
           <li>
             <strong className="text-ink">Built-in samples and red-team variants</strong> are synthetic and public.
           </li>
           <li>
-            <strong className="text-ink">Connected mailboxes:</strong> the address, your chosen retention period, scan counts and the sign-in token from Google or
-            Microsoft. The token is encrypted at rest with AES-256-GCM and is never sent back to the browser.
+            <strong className="text-ink">Emails sent to the test inbox</strong> are listed on the public{" "}
+            <Link href="/live" className="text-lime underline-offset-4 hover:underline">
+              Live
+            </Link>{" "}
+            page with their subject, a preview and the full analysis. Names are cut to initials, addresses to their first two characters, and long
+            numbers and codes are shortened; links and domains stay visible because they are the evidence. Do not send personal mail there.
           </li>
           <li>
             <strong className="text-ink">Campaign indicators</strong> (sender, domains, links, phone numbers, a template fingerprint) are kept so that
@@ -49,16 +54,15 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
       <ul className="flex list-disc flex-col gap-1.5 pl-5">
         <li>
           <strong className="text-ink">Featherless AI</strong> hosts the language and vision models. The email content (and, for HTML email, a
-          screenshot of it rendered offline) is sent there for analysis. For a connected mailbox, your own address is replaced with
-          &quot;[your address]&quot; first. How Featherless handles requests is covered by{" "}
+          screenshot of it rendered offline) is sent there for analysis. How Featherless handles requests is covered by{" "}
           <a href="https://featherless.ai" target="_blank" rel="noopener noreferrer" className="text-lime underline-offset-4 hover:underline">
             their policies
           </a>
           .
         </li>
         <li>
-          <strong className="text-ink">AgentBoxD</strong> provides the AEGIS forwarding inbox. Only mail you choose to forward to that inbox passes
-          through it. Connected mailboxes and pasted emails never go to AgentBoxD.
+          <strong className="text-ink">AgentBoxD</strong> provides the AEGIS test inbox. Only mail you send to that address passes through it, and
+          the verdict is replied to you through it. Pasted emails never go to AgentBoxD.
         </li>
         <li>
           <strong className="text-ink">Links in the email</strong> are fetched by the AEGIS link sandbox, without JavaScript and without cookies, so
@@ -68,23 +72,11 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "Connected mailboxes",
-    body: (
-      <ul className="flex list-disc flex-col gap-1.5 pl-5">
-        <li>Only mail that arrives after you connect is scanned. Existing mail is never read.</li>
-        <li>Mail is read without being marked as read.</li>
-        <li>AEGIS only adds a label (Gmail) or a category and flag (Outlook). It never moves, deletes, forwards or sends mail.</li>
-        <li>You connect with Sign in with Google or Microsoft. AEGIS never sees your password, and you can remove its access at any time.</li>
-        <li>Google: one permission, read mail and add labels (gmail.modify). Microsoft: read and update mail (Mail.ReadWrite, the narrowest scope that allows tagging). AEGIS never uses them to send, move or delete.</li>
-      </ul>
-    ),
-  },
-  {
     title: "Cookies",
     body: (
       <p>
-        AEGIS sets one cookie, <code className="font-mono text-ink">aegis_viewer</code>. It holds a random value that says which private results and
-        mailboxes belong to this browser. It is HttpOnly (page scripts cannot read it), is not linked to your name or email, and is not used for
+        AEGIS sets one cookie, <code className="font-mono text-ink">aegis_viewer</code>. It holds a random value that says which private results belong
+        to this browser. It is HttpOnly (page scripts cannot read it), is not linked to your name or email, and is not used for
         analytics or tracking. Clearing it means this browser can no longer list your private results; anything you still have a link to stays
         reachable through that link until it is deleted.
       </p>
@@ -103,15 +95,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     title: "How to delete your data",
     body: (
       <ul className="flex list-disc flex-col gap-1.5 pl-5">
-        <li>
-          On the{" "}
-          <Link href="/inbox" className="text-lime underline-offset-4 hover:underline">
-            Inbox
-          </Link>{" "}
-          page, disconnect a mailbox and tick &quot;also delete all analyses from this mailbox&quot;. The stored sign-in token is deleted immediately; for Google accounts, access is also revoked at Google.
-        </li>
         <li>Email text is deleted automatically after the retention period.</li>
-        <li>For Microsoft accounts, also remove AEGIS under your account&apos;s app permissions (Microsoft offers no way for an app to give its access back).</li>
       </ul>
     ),
   },

@@ -1,8 +1,7 @@
 import Link from "next/link"
-import { ArrowRight, Eye, FileSearch, Fingerprint, Gavel, Globe, Mail, Network, ScanText, ShieldCheck, Sparkles } from "lucide-react"
+import { ArrowRight, Eye, FileSearch, Fingerprint, Gavel, Globe, Network, ScanText, ShieldCheck, Sparkles } from "lucide-react"
 
 import { EmailTestButton, InboxCallout, LiveCounters } from "@/components/aegis/landing-widgets"
-import { PrivacyPromises } from "@/components/aegis/privacy-promises"
 import { BorderBeam } from "@/components/ui/border-beam"
 
 const PIPELINE = [
@@ -85,39 +84,6 @@ export default function LandingPage() {
             </li>
           ))}
         </ol>
-      </section>
-
-      <section aria-labelledby="inbox-heading" className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
-        <div className="hud p-6 sm:p-9">
-          <div className="mb-7 grid gap-6 md:grid-cols-[1.3fr_auto] md:items-end">
-            <div className="max-w-2xl">
-              <p className="label-mono mb-3 text-lime">New: connect your inbox</p>
-              <h2 id="inbox-heading" className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-                It watches your inbox. It never takes over.
-              </h2>
-              <p className="mt-3 text-muted-foreground">
-                Sign in with Google or Microsoft and every new email is checked in the background and scams get an
-                AEGIS label, with the full evidence one click away. Privacy is the design, not a setting:
-              </p>
-            </div>
-            <Link
-              href="/inbox"
-              className="group inline-flex h-12 items-center gap-2 justify-self-start rounded-full bg-lime px-7 text-sm font-semibold text-black shadow-[0_0_24px_rgba(217,255,61,0.35)] transition-transform active:scale-[0.98] md:justify-self-end"
-            >
-              <Mail className="size-4" aria-hidden="true" />
-              Connect your inbox
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-            </Link>
-          </div>
-          <PrivacyPromises compact />
-          <p className="mt-5 text-xs text-faint">
-            Details on the{" "}
-            <Link href="/privacy" className="text-lime underline-offset-4 hover:underline">
-              privacy page
-            </Link>
-            .
-          </p>
-        </div>
       </section>
 
       <section className="mx-auto max-w-5xl px-4 pb-24 sm:px-6">

@@ -1,5 +1,5 @@
 // Viewer token: 32 random bytes, base64url (43 chars). It is the only cookie
-// AEGIS sets. It is functional (it says which private analyses and mailboxes
+// AEGIS sets. It is functional (it says which private analyses
 // belong to this browser), HttpOnly so page scripts cannot read it, and not
 // tied to any account, analytics or tracking. Server-side use only.
 
