@@ -2,6 +2,29 @@
 
 Newest first.
 
+## 2026-10-08: /live fits one screen; mailbox sign-in UI removed (D12)
+
+- **Changed:** `components/aegis/live-inbox.tsx` rebuilt for no long scroll: one-line address bar
+  (Listening, address, Copy, Mail app, one line of help), then a fixed-height workspace
+  (`lg:h-[calc(100dvh-17rem)]`) with the inbox feed and the dissection side by side, each scrolling
+  inside its panel. The dissection keeps a verdict strip on top (risk number, label, plain verdict,
+  stage bar) and puts the rest in tabs: Overview (summary, corroboration, next steps), Red flags,
+  Agents (per-stage status, timing, summary or error) and Email (censored). It opens on Agents while
+  the pipeline runs and on Overview once there is a verdict. `/live` header shortened.
+  `PipelineView` is back to its original form (the `narrow` option is no longer used).
+- **Removed (user request):** `/inbox` and `/connect` pages, `inbox-connect.tsx`,
+  `signin-confirm.tsx`, the home "connect your inbox" section, the mailbox privacy promises
+  (`privacy-promises.tsx` is now `private-badge.tsx` with only `PrivateBadge`), the mailbox and
+  sign-in client functions and types in `lib/api.ts`. Nav "Inbox" is now "Live". Privacy page,
+  README and cases empty state no longer describe mailbox sign-in; the privacy page and README now
+  say the test inbox is public and censored. Backend mailbox and OAuth routes are untouched.
+- **Verified:** tsc, eslint, build (route list has /live, no /inbox or /connect; both now 404).
+  `agent-browser` failed to reach its own daemon (os error 10060, also after killing it), so
+  screenshots were taken with the backend venv's headless Chromium: 1440x900 shows the whole
+  workspace on one screen with Overview, Red flags and Agents tabs working; 390px stacks with no
+  horizontal scroll; nav links are Analyze, Live, Cases, Campaigns, Red team; the home page no
+  longer mentions connecting an inbox. One simulated signed webhook mail was used and deleted.
+
 ## 2026-10-08: Held scam mail, censored details and dissection for every inbox email
 
 - **Found:** "only 2 emails" was AgentBoxD screening. The workspace has "Agents get only screened

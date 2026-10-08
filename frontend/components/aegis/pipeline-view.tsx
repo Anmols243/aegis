@@ -30,8 +30,7 @@ const ROLE: Record<string, string> = {
   report: "Write the verdict",
 }
 
-/** `narrow`: for a side column; caps the grid at 5 cards a row instead of 9. */
-export function PipelineView({ stages, live, narrow = false }: { stages: Record<string, Stage>; live: boolean; narrow?: boolean }) {
+export function PipelineView({ stages, live }: { stages: Record<string, Stage>; live: boolean }) {
   return (
     <div className="hud p-4 sm:p-5">
       <div className="mb-4 flex items-center gap-3">
@@ -44,7 +43,7 @@ export function PipelineView({ stages, live, narrow = false }: { stages: Record<
         ) : null}
         <span className="h-px flex-1 bg-hair" />
       </div>
-      <ol className={cn("grid grid-cols-3 gap-2 sm:grid-cols-5", !narrow && "lg:grid-cols-9")}>
+      <ol className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-9">
         {STAGES.map((name, i) => {
           const s = stages[name]
           const status = s?.status ?? "pending"
