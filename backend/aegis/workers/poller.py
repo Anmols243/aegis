@@ -1,10 +1,10 @@
-"""Optional AgentBoxD inbox poller (AGENTBOXD_POLL=true): an alternative to
+"""AgentBoxD inbox poller (on unless a webhook secret is set; AGENTBOXD_POLL forces it): the
 webhooks that needs no public URL. Only mail arriving after startup is taken,
 so old messages are never re-analyzed or auto-replied to."""
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
@@ -17,8 +17,18 @@ from ..services import analysis as svc
 log = get_logger("poller")
 
 
+def _after(ts: str) -> str:
+    """ISO timestamp 1 ms later (same format AgentBoxD returns)."""
+    try:
+        t = datetime.fromisoformat(ts.replace("Z", "+00:00")) + timedelta(milliseconds=1)
+    except ValueError:
+        return ts
+    return t.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.") + f"{t.microsecond // 1000:03d}Z"
+
+
 async def poll_forever(agentboxd: AgentBoxD, on_enqueue) -> None:
     since = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    last_id = None
     log.info("poller started", extra={"inbox": agentboxd.s.agentboxd_inbox_id})
     while True:
         try:
@@ -29,6 +39,12 @@ async def poll_forever(agentboxd: AgentBoxD, on_enqueue) -> None:
             since = stub.get("received_at") or stub.get("created_at") or since
             if not mid:
                 continue
+            if mid == last_id:
+                # the API returned the same message again (inclusive `since`):
+                # step past it instead of spinning on it
+                since = _after(since)
+                continue
+            last_id = mid
             async with session_scope() as s:
                 exists = (await s.execute(select(Analysis.id).where(
                     Analysis.external_id == mid))).scalar_one_or_none()

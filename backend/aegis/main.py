@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
     app.state.mailbox_poller = mailbox_poller
     await mailbox_poller.start()
     poller = None
-    if s.agentboxd_poll and agentboxd.configured:
+    if s.agentboxd_polling:
         poller = asyncio.create_task(poll_forever(agentboxd, worker.notify))
     log.info("aegis started", extra={"version": __version__, "llm": s.llm_configured,
                                      "agentboxd": agentboxd.configured,

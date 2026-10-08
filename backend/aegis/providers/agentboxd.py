@@ -78,7 +78,11 @@ class AgentBoxD:
             r = await c.get(f"/v1/messages/{message_id}")
             r.raise_for_status()
             data = r.json()
-            return data.get("data", data) if isinstance(data, dict) else {}
+            if not isinstance(data, dict):
+                return {}
+            # the live API returns the bare message, which has its own (null) `data`
+            # field; unwrap only a real envelope
+            return data["data"] if isinstance(data.get("data"), dict) else data
 
     async def wait_inbound(self, since: str | None, timeout_s: int = 60) -> dict | None:
         params: dict = {"timeout": timeout_s, "direction": "inbound"}
