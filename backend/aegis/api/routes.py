@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import importlib.util
 import json
 import os
@@ -22,11 +21,11 @@ from ..core.events import bus
 from ..core.logging import get_logger
 from ..core.security import limit_general, limit_submit, require_api_key
 from ..core.viewer import require_viewer, viewer_hash
-from ..db.models import Analysis, AuditEvent, Mailbox, RedteamRun, StageRun
-from ..db.session import iso, session_scope
+from ..db.models import Analysis, AuditEvent, Mailbox, RedteamRun
+from ..db.session import session_scope
 from ..providers import oauth
 from ..providers.agentboxd import message_scores, message_to_raw, verify_signature
-from ..services import abuse, campaigns, mailboxes, redteam
+from ..services import abuse, campaigns, livefeed, mailboxes, redteam
 from ..services import analysis as svc
 from ..services.samples import BY_ID as SAMPLES_BY_ID
 from ..services.samples import SAMPLES
@@ -117,54 +116,30 @@ async def config_public() -> dict:
                          "llm": s.llm_configured}}
 
 
-def _mask_sender(sender: str | None) -> str | None:
-    """`sh***@gmail.com`: enough for a tester to spot their own mail, never the full address
-    or display name."""
-    m = re.search(r"([\w.+-]+)@([\w-]+(?:\.[\w-]+)+)", sender or "")
-    if not m:
-        return None
-    return f"{m.group(1)[:2]}***@{m.group(2).lower()}"
-
-
 @private.get("/inbox/live")
 async def inbox_live(limit: int = 20) -> dict:
-    """Recent mail that arrived at the AgentBoxD inbox, with pipeline progress, for the
-    live test page. Subject, sender and id are shown only for public inbox mail
-    (INBOX_PUBLIC=true); private rows carry status and verdict only."""
+    """Recent mail that reached the AgentBoxD inbox, partially censored, with pipeline
+    progress, for the live test page (services/livefeed.py)."""
     s = get_settings()
     if not s.agentboxd_configured:
         return {"enabled": False, "address": None, "public": False, "items": []}
-    limit = max(1, min(limit, 50))
     async with session_scope() as session:
-        rows = (await session.execute(
-            select(Analysis)
-            .where(Analysis.source.in_(("poller", "webhook")),
-                   Analysis.inbox_id == s.agentboxd_inbox_id)
-            .order_by(Analysis.created_at.desc(), Analysis.id.desc())
-            .limit(limit))).scalars().all()
-        stages: dict[str, list[dict]] = {}
-        if rows:
-            for st in (await session.execute(
-                    select(StageRun).where(StageRun.analysis_id.in_([a.id for a in rows]))
-                    .order_by(StageRun.seq))).scalars():
-                stages.setdefault(st.analysis_id, []).append(
-                    {"name": st.name, "status": st.status})
-    items = []
-    for a in rows:
-        shown = a.visibility == "public"
-        items.append({
-            # opaque row key: stable across polls, not the capability id
-            "key": hashlib.sha256(a.id.encode()).hexdigest()[:12],
-            "id": a.id if shown else None,
-            "created_at": iso(a.created_at), "status": a.status, "label": a.label,
-            "score": a.score, "duration_s": a.duration_s,
-            "subject": a.subject if shown else None,
-            "sender": _mask_sender(a.sender) if shown else None,
-            "replied": a.replied_at is not None, "private": not shown,
-            "stages": stages.get(a.id, []),
-        })
+        items = await livefeed.feed(session, s, max(1, min(limit, 50)))
     return {"enabled": True, "address": s.agentboxd_inbox_address, "public": s.inbox_public,
             "items": items}
+
+
+@private.get("/inbox/live/{key}")
+async def inbox_live_detail(key: str) -> dict:
+    """The censored dissection of one inbox email, by its opaque row key."""
+    s = get_settings()
+    if not s.agentboxd_configured or not re.fullmatch(r"[0-9a-f]{12}", key):
+        raise HTTPException(404, "not found")
+    async with session_scope() as session:
+        out = await livefeed.detail(session, s, key)
+    if out is None:
+        raise HTTPException(404, "not found")
+    return out
 
 
 async def _read_submission(request: Request) -> tuple[str, str]:

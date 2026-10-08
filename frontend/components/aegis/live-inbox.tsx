@@ -7,10 +7,9 @@ import { toast } from "sonner"
 
 import { ErrorState, LoadingState, VerdictBadge } from "@/components/aegis/bits"
 import { PipelineView } from "@/components/aegis/pipeline-view"
-import { useLiveAnalysis } from "@/components/aegis/use-live-analysis"
 import { VerdictReport } from "@/components/aegis/verdict-report"
 import { BorderBeam } from "@/components/ui/border-beam"
-import { api, STAGES, type LiveInbox, type LiveInboxItem } from "@/lib/api"
+import { api, STAGES, type LiveInbox, type LiveInboxDetail, type LiveInboxItem, type Stage } from "@/lib/api"
 import { seconds, timeAgo } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -68,13 +67,13 @@ export function LiveInboxView() {
   }
 
   // The panel follows the newest email it may open, unless the visitor picked one.
-  const openable = data.items.filter((i) => i.id)
+  const openable = data.items
   const current = (pinned && openable.find((i) => i.key === pinned)) || openable[0] || null
   const following = !pinned || current?.key !== pinned
 
   return (
     <div className="flex flex-col gap-6">
-      <AddressCard address={data.address} isPublic={data.public} checkedAt={checkedAt} offline={!!error} />
+      <AddressCard address={data.address} checkedAt={checkedAt} offline={!!error} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <section aria-labelledby="feed-title" className="flex min-w-0 flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -93,7 +92,7 @@ export function LiveInboxView() {
                   item={item}
                   fresh={fresh.has(item.key)}
                   selected={current?.key === item.key}
-                  onSelect={item.id ? () => setPinned(item.key === openable[0]?.key ? null : item.key) : undefined}
+                  onSelect={() => setPinned(item.key === openable[0]?.key ? null : item.key)}
                 />
               ))}
             </ul>
@@ -115,16 +114,14 @@ export function LiveInboxView() {
               </button>
             )}
           </div>
-          {current?.id ? (
-            <Dissection key={current.id} id={current.id} item={current} />
+          {current ? (
+            <Dissection key={current.key} item={current} />
           ) : (
             <div className="hud flex flex-col items-center gap-3 px-6 py-16 text-center">
               <Sparkles className="size-5 text-lime" aria-hidden="true" />
               <p className="label-mono text-[12px] text-muted-foreground">Nothing to dissect yet</p>
               <p className="max-w-sm text-sm text-faint">
-                {data.items.length && !data.public
-                  ? "This inbox is private, so emails are not opened here. Their verdict is replied to the sender."
-                  : "The moment an email lands, every agent's work on it streams in here, card by card, ending in the verdict."}
+                The moment an email lands, every agent&apos;s work on it streams in here, card by card, ending in the verdict.
               </p>
             </div>
           )}
@@ -134,9 +131,43 @@ export function LiveInboxView() {
   )
 }
 
-/** One email taken apart live: the nine agents as they run, then the full verdict report. */
-function Dissection({ id, item }: { id: string; item: LiveInboxItem }) {
-  const { analysis, stages, phase, error, retry } = useLiveAnalysis(id)
+const DETAIL_POLL_MS = 1500
+
+function stagesRecord(list: Stage[] | undefined): Record<string, Stage> {
+  const out: Record<string, Stage> = {}
+  for (const st of list ?? []) out[st.name] = st
+  return out
+}
+
+/** One email taken apart live, partially censored by the server: the nine agents as they
+ *  run (polled), the email itself, then the verdict report. */
+function Dissection({ item }: { item: LiveInboxItem }) {
+  const [detail, setDetail] = React.useState<LiveInboxDetail | null>(null)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    let alive = true
+    let timer = 0
+    const tick = async () => {
+      try {
+        const d = await api.inboxLiveDetail(item.key)
+        if (!alive) return
+        setDetail(d)
+        setError(null)
+        if (d.status === "done" || d.status === "failed") return
+      } catch (e) {
+        if (alive) setError(e instanceof Error ? e.message : "Could not open this email.")
+      }
+      if (alive) timer = window.setTimeout(tick, DETAIL_POLL_MS)
+    }
+    tick()
+    return () => {
+      alive = false
+      window.clearTimeout(timer)
+    }
+  }, [item.key])
+
+  const live = !detail || detail.status === "queued" || detail.status === "running"
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <div className="hud flex min-w-0 flex-wrap items-center gap-3 px-5 py-4">
@@ -144,25 +175,62 @@ function Dissection({ id, item }: { id: string; item: LiveInboxItem }) {
           <p className="truncate font-display text-lg font-bold text-ink">{item.subject || "(no subject)"}</p>
           <p className="truncate font-mono text-[11px] text-faint">{[item.sender, timeAgo(item.created_at)].filter(Boolean).join(" · ")}</p>
         </div>
-        <Link href={`/cases/${encodeURIComponent(id)}`} className="inline-flex shrink-0 items-center gap-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground hover:text-lime">
-          Full case <ArrowUpRight className="size-3.5" aria-hidden="true" />
-        </Link>
+        {item.id ? (
+          <Link href={`/cases/${encodeURIComponent(item.id)}`} className="inline-flex shrink-0 items-center gap-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground hover:text-lime">
+            Full case <ArrowUpRight className="size-3.5" aria-hidden="true" />
+          </Link>
+        ) : null}
       </div>
-      {phase === "loading" ? <LoadingState label="Opening the email" /> : null}
-      {phase === "error" || phase === "missing" ? <ErrorState message={error ?? "This email is no longer available."} onRetry={retry} /> : null}
-      {phase === "live" || phase === "done" || phase === "failed" ? <PipelineView stages={stages} live={phase === "live"} narrow /> : null}
-      {phase === "live" ? (
+      {!detail && !error ? <LoadingState label="Opening the email" /> : null}
+      {!detail && error ? <ErrorState message={error} /> : null}
+      {detail ? <PipelineView stages={stagesRecord(detail.stages)} live={live} narrow /> : null}
+      {detail && live ? (
         <p className="flex items-center justify-center gap-2 py-2 font-mono text-[12px] text-lime">
           <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> Agents working. The verdict appears here when they finish.
         </p>
       ) : null}
-      {phase === "failed" ? <ErrorState message={analysis?.error || "The analysis failed. The pipeline fails closed, so treat this email as suspicious."} /> : null}
-      {phase === "done" && analysis ? <VerdictReport analysis={analysis} /> : null}
+      {detail ? <CensoredEmail detail={detail} /> : null}
+      {detail?.status === "failed" ? <ErrorState message={detail.error || "The analysis failed. The pipeline fails closed, so treat this email as suspicious."} /> : null}
+      {detail?.status === "done" ? <VerdictReport analysis={detail} mode="share" /> : null}
     </div>
   )
 }
 
-function AddressCard({ address, isPublic, checkedAt, offline }: { address: string; isPublic: boolean; checkedAt: number | null; offline: boolean }) {
+function CensoredEmail({ detail }: { detail: LiveInboxDetail }) {
+  const e = detail.email
+  if (!e) return null
+  const rows = (
+    [
+      ["From", e.from],
+      ["Subject", e.subject],
+    ] as [string, string | null | undefined][]
+  ).filter((r): r is [string, string] => !!r[1])
+  return (
+    <section className="hud flex min-w-0 flex-col gap-3 p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="label-mono text-ink/80">The email</h3>
+        <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] text-faint">
+          <Lock className="size-3" aria-hidden="true" /> names, addresses and numbers partially censored
+        </span>
+      </div>
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+        {rows.map(([k, v]) => (
+          <React.Fragment key={k}>
+            <dt className="label-mono pt-0.5 text-[9.5px]">{k}</dt>
+            <dd className="break-words font-mono text-[12.5px] text-ink/90">{v}</dd>
+          </React.Fragment>
+        ))}
+      </dl>
+      {e.text ? (
+        <pre className="thin-scroll max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-hair bg-black/30 p-3 font-mono text-[12px] leading-relaxed text-ink/80">
+          {e.text}
+        </pre>
+      ) : null}
+    </section>
+  )
+}
+
+function AddressCard({ address, checkedAt, offline }: { address: string; checkedAt: number | null; offline: boolean }) {
   const [copied, setCopied] = React.useState(false)
   const mailto = `mailto:${address}?subject=${encodeURIComponent(MAIL_SUBJECT)}&body=${encodeURIComponent(MAIL_BODY)}`
   const steps = [
@@ -241,9 +309,8 @@ function AddressCard({ address, isPublic, checkedAt, offline }: { address: strin
 
         <p className="flex items-start gap-2 text-xs text-faint">
           <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-          {isPublic
-            ? "This is a public demo inbox: the subject and a masked sender of every email sent here are shown on this page to everyone. Do not send personal mail."
-            : "Emails sent here stay private: this page shows only their progress and verdict, never the subject or sender. The full verdict is replied to you by email."}
+          This is a public test inbox: every email sent here is shown on this page with names, addresses and numbers partially censored, and its
+          verdict is replied to the sender. Do not send personal mail.
         </p>
       </section>
     </BorderBeam>
@@ -282,16 +349,9 @@ function InboxRow({ item, fresh, selected, onSelect }: { item: LiveInboxItem; fr
     <>
       <span className="flex min-w-0 items-start justify-between gap-3">
         <span className="flex min-w-0 flex-col">
-          <span className={cn("truncate text-[14px] font-medium", item.private ? "text-muted-foreground" : "text-ink")}>
-            {item.private ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Lock className="size-3.5" aria-hidden="true" /> Private email
-              </span>
-            ) : (
-              item.subject || "(no subject)"
-            )}
-          </span>
+          <span className="truncate text-[14px] font-medium text-ink">{item.subject || "(no subject)"}</span>
           <span className="truncate font-mono text-[11px] text-faint">{[item.sender, timeAgo(item.created_at)].filter(Boolean).join(" · ")}</span>
+          {item.preview ? <span className="mt-1 line-clamp-2 text-[12px] leading-snug text-muted-foreground">{item.preview}</span> : null}
         </span>
         <span className="shrink-0">
           {working ? (

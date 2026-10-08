@@ -215,3 +215,33 @@ def test_inbox_polling_default():
     assert Settings(**base, agentboxd_webhook_secret="s").agentboxd_polling is False
     assert Settings(**base, agentboxd_webhook_secret="s", agentboxd_poll=True).agentboxd_polling
     assert Settings(agentboxd_poll=True).agentboxd_polling is False         # not configured
+
+
+def test_livefeed_censor():
+    from aegis.services.livefeed import censor, mask_sender
+    assert mask_sender("Shabeeh Khan <shabeeh.k@gmail.com>") == "sh***@gmail.com"
+    out = censor("From: Anmol Singh <anmol@gmail.com>, call +1 (800) 555-0142, code "
+                 "AbCdEfGhIjKlMnOpQrStUvWxYz12, see https://paypa1-secure.com/verify")
+    assert "Anmol Singh" not in out and "A*** S*** <an***@gmail.com>" in out
+    assert "555-0142" not in out and "***42" in out
+    assert "AbCdEfGh" not in out and "AbCd***" in out
+    assert "https://paypa1-secure.com/verify" in out           # links are evidence
+
+
+def test_poller_retry_after():
+    import httpx
+
+    from aegis.workers.poller import _retry_after
+    body = {"error": {"code": "rate_limited", "details": {"retry_after_seconds": 7}}}
+    assert _retry_after(httpx.Response(429, json=body)) == 7
+    assert _retry_after(httpx.Response(429, headers={"retry-after": "30"})) == 30
+    assert _retry_after(httpx.Response(429)) == 15
+
+
+def test_agentboxd_screening_opt_ins():
+    from aegis.core.config import Settings
+    from aegis.providers.agentboxd import AgentBoxD
+    base = {"agentboxd_api_key": "k", "agentboxd_inbox_id": "i"}
+    assert AgentBoxD(Settings(**base))._screening() == {"include_unscreened": "true"}
+    assert AgentBoxD(Settings(**base, agentboxd_include_held=True))._screening() == {
+        "include_unscreened": "true", "include_held": "true"}
