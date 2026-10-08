@@ -90,11 +90,10 @@ export function EmailTestButton() {
     <Link
       href="/live"
       title="Open the live test inbox"
-      className="inline-flex min-h-12 max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full border border-lime/40 bg-surface/80 px-7 py-2 text-sm font-medium text-ink backdrop-blur transition-colors hover:border-lime hover:text-lime"
+      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-lime/40 bg-surface/80 px-7 py-2 text-sm font-medium text-ink backdrop-blur transition-colors hover:border-lime hover:text-lime"
     >
       <Mail className="size-4 shrink-0 text-lime" aria-hidden="true" />
-      Send a random email to
-      <span className="break-all font-mono text-[13px] text-lime">{addr}</span>
+      Test system
     </Link>
   )
 }
