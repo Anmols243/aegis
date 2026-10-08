@@ -27,6 +27,8 @@ export function CasesFeed({ initialMine = false }: { initialMine?: boolean }) {
   const [error, setError] = React.useState<string | null>(null)
   const [loadingMore, setLoadingMore] = React.useState(false)
   const [attempt, setAttempt] = React.useState(0)
+  // Bumped on every filter change, so a "load more" that was in flight is dropped.
+  const generation = React.useRef(0)
 
   // Debounce the search box.
   React.useEffect(() => {
@@ -36,6 +38,7 @@ export function CasesFeed({ initialMine = false }: { initialMine?: boolean }) {
 
   React.useEffect(() => {
     let alive = true
+    generation.current += 1
     api
       .listAnalyses({ limit: 20, label, q, mine })
       .then((page) => {
@@ -52,13 +55,15 @@ export function CasesFeed({ initialMine = false }: { initialMine?: boolean }) {
 
   const loadMore = async () => {
     if (!cursor) return
+    const gen = generation.current
     setLoadingMore(true)
     try {
       const page = await api.listAnalyses({ limit: 20, label, q, cursor, mine })
+      if (gen !== generation.current) return
       setItems((prev) => [...(prev ?? []), ...page.items])
       setCursor(page.next_cursor)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load more.")
+      if (gen === generation.current) setError(e instanceof Error ? e.message : "Could not load more.")
     } finally {
       setLoadingMore(false)
     }

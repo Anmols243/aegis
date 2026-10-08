@@ -60,6 +60,7 @@ export function RedteamArena() {
       } catch (e) {
         if (!alive) return
         setRunError(e instanceof Error ? e.message : "Lost track of the run.")
+        if (e instanceof ApiError && e.status === 404) return   // run is gone: stop polling
       }
       timer = window.setTimeout(tick, 2000)
     }

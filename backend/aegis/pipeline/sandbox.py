@@ -109,15 +109,35 @@ class LinkVerdict:
         return d
 
 
+_TAG = re.compile(r"<(input|form|a)\b([^<>]*)")   # stops at the next < or >: linear
+_HREF = re.compile(r"href=[\"']?([^\"'\s]*)")
+_LOGIN_WORDS = re.compile(r"log\s?in|sign[\s-]?in|password|verify")
+
+
 def classify_html(html: str, final_url: str) -> dict:
+    # Attacker-controlled page: every scan here must stay linear in the body size,
+    # since this runs on the event loop (a backtracking regex would stall the server).
     low = html.lower()
-    has_password = bool(re.search(r"<input[^>]*type=[\"']?password", low))
-    has_login = has_password or bool(re.search(
-        r"<form[^>]*>.*?(log\s?in|sign[\s-]?in|password|verify)", low, re.DOTALL))
-    m = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
-    title = re.sub(r"\s+", " ", m.group(1)).strip()[:160] if m else ""
-    ext = "|".join(e.lstrip(".") for e in _MALWARE_EXTS)
-    download = bool(re.search(rf"<a[^>]+href=[\"']?[^\"'>]*\.({ext})[\"'\s>]", low))
+    has_password, first_form_end, download = False, -1, False
+    for m in _TAG.finditer(low):
+        tag, attrs = m.group(1), m.group(2)
+        if tag == "input":
+            has_password = has_password or bool(re.search(r"type=[\"']?password", attrs))
+        elif tag == "form":
+            if first_form_end < 0:
+                first_form_end = m.end()
+        elif not download:
+            download = any(v.endswith(_MALWARE_EXTS) for v in _HREF.findall(attrs))
+    has_login = has_password or (first_form_end >= 0
+                                 and bool(_LOGIN_WORDS.search(low, first_form_end)))
+    title = ""
+    start = low.find("<title")
+    if start >= 0:
+        gt = low.find(">", start)
+        end = low.find("</title>", gt) if gt >= 0 else -1
+        if end >= 0:
+            src = html if len(html) == len(low) else low
+            title = re.sub(r"\s+", " ", src[gt + 1:end]).strip()[:160]
     path = urlsplit(final_url).path.lower()
     if has_password:
         kind = "credential-harvest"
