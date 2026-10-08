@@ -124,8 +124,10 @@ Backend settings (environment variables or `backend/.env`):
 | `AEGIS_API_KEY` | Require `Authorization: Bearer` on the API. Set it whenever the backend is reachable beyond localhost; give the same value to the frontend |
 | `AGENTBOXD_API_KEY`, `AGENTBOXD_INBOX_ID`, `AGENTBOXD_INBOX_ADDRESS` | Inbox integration |
 | `AGENTBOXD_WEBHOOK_SECRET` | Enables `POST /api/v1/ingest/agentboxd` (HMAC-verified) |
-| `AGENTBOXD_POLL=true` | Long-poll the inbox instead of webhooks (no public URL needed) |
+| `AGENTBOXD_POLL` | Long-poll the inbox (no public URL needed). Unset: on whenever AgentBoxD is configured and no webhook secret is set |
 | `AGENTBOXD_AUTO_REPLY` | Reply in-thread with the verdict card (default true) |
+| `AGENTBOXD_INCLUDE_UNSCREENED` | Take mail before AgentBoxD screening finishes, so it shows up at once (default true) |
+| `AGENTBOXD_INCLUDE_HELD` | Also read mail AgentBoxD screening held as phishing; needs an API key with the `messages:release` permission (default false) |
 | `CORS_ORIGINS` | Comma-separated allowlist; empty means no CORS headers |
 | `AEGIS_SECRET_KEY` | 32 bytes, base64url: encrypts mailbox credentials. If unset, a key is generated into `DATA_DIR/secret.key`; set it explicitly in production |
 | `PRIVATE_RETENTION_DAYS` | Days before pasted and inbox-forwarded email content is purged (default 7) |
