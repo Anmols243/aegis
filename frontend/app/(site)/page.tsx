@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowRight, Eye, FileSearch, Fingerprint, Gavel, Globe, Mail, Network, ScanText, ShieldCheck, Sparkles } from "lucide-react"
 
-import { InboxCallout, LiveCounters } from "@/components/aegis/landing-widgets"
+import { EmailTestButton, InboxCallout, LiveCounters } from "@/components/aegis/landing-widgets"
 import { PrivacyPromises } from "@/components/aegis/privacy-promises"
 import { BorderBeam } from "@/components/ui/border-beam"
 
@@ -52,6 +52,7 @@ export default function LandingPage() {
           >
             Browse recent cases
           </Link>
+          <EmailTestButton />
         </div>
         <div className="mt-6">
           <InboxCallout />

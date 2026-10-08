@@ -2,6 +2,60 @@
 
 Newest first.
 
+## 2026-10-08: Auto inbox checker fixed and made default; live dissection on /live
+
+- **Fixed (real bug):** the AgentBoxD poller never ingested a message. `GET /v1/messages/{id}` returns
+  the bare message, which has its own `"data": null` field; `get_message` unwrapped `data` and got
+  `None`, so every poll raised `'NoneType' object has no attribute 'get'` (seen in the log every
+  ~6s; a real mail at 14:17 was missed). Unwrap only a dict envelope. Regression test fails on the
+  old code.
+- **Fixed:** the inbox `wait` endpoint's `since` is inclusive (probed read-only: since = a message's
+  `received_at` returns that message), so the poller now steps 1 ms past a message it just handled
+  instead of re-fetching it in a loop.
+- **Changed:** `AGENTBOXD_POLL` is now optional: unset means poll whenever AgentBoxD is configured
+  and no webhook secret is set (`Settings.agentboxd_polling`). Explicit true/false still wins.
+- **Added:** `/live` gains a "Live dissection" panel: follows the newest openable email (or the row
+  you click; "Follow newest" returns), streams the nine agents over SSE (`PipelineView narrow`), then
+  the full `VerdictReport`. The SSE + polling logic moved out of `CaseView` into
+  `components/aegis/use-live-analysis.ts` (CaseView behaviour unchanged). Feed refresh is now 2s.
+- **Verified:** pytest 90 passed. tsc, eslint, build. Simulated one signed webhook mail (no real
+  mail, record deleted after): the panel streamed the pipeline and rendered the report; at 1440px
+  the narrow pipeline shows 5 readable cards a row. Backend restarted with only the AgentBoxD values
+  and `INBOX_PUBLIC=true` as process env vars: "poller started", no poll errors. A real email
+  through the new poller is pending (waiting for one to be sent).
+
+## 2026-10-08: Live test inbox page (/live)
+
+- **Added:** `GET /api/v1/inbox/live` (`routes.py`): latest mail that reached the AgentBoxD inbox
+  (sources poller/webhook, this inbox id) with per-stage progress, verdict, reply flag and an opaque
+  row key. `id`, `subject` and a masked sender (`sh***@gmail.com`, never the display name) only for
+  public inbox mail (`INBOX_PUBLIC=true`); private rows show progress and verdict only.
+  `{"enabled": false}` without AgentBoxD. Documented in docs/API.md, typed in lib/api.ts.
+- **Added:** `/live` page (`components/aegis/live-inbox.tsx`): address card with Copy and Open mail
+  app, a Listening indicator, three steps, a privacy line that matches the server setting, then a
+  feed polled every 3s (paused while the tab is hidden). New mail flashes and raises a toast; each
+  row shows a 9-segment stage bar, the running stage, verdict, duration and "replied"; public rows
+  open their case.
+- **Changed:** the home hero button ("Send a random email to <address>") now links to `/live`
+  instead of opening the mail app (the mailto moved onto the page).
+- **Verified:** pytest 86 passed (new: private and public feed, disabled feed). tsc, eslint, build.
+  Backend run with the AgentBoxD values plus `INBOX_PUBLIC=true` and a local webhook secret as process
+  env vars (no `.env` written). Posted one signed fake `message.received` webhook (no real mail): the
+  open /live page showed the row by itself with stage bar and verdict (SUSPICIOUS; forensic stage
+  failed because no model key is set). The fake record was then deleted from the local DB. Mobile
+  390px: no horizontal scroll. A real email through AgentBoxD to the page is not yet verified.
+
+## 2026-10-08: "Send a random email to <inbox>" hero button
+
+- **Changed:** `landing-widgets.tsx` gains `EmailTestButton`: a `mailto:` link to the AgentBoxD inbox
+  (subject "Test AEGIS", body tells the visitor to paste or forward a suspicious email). Rendered in
+  the home hero after "Browse recent cases" (label "Send a random email to" + the address), only when `/config/public` reports `features.inbox` and an
+  `inbox_address`, so it never points at an inbox nobody reads.
+- **Verified:** tsc, eslint, build. Backend started with the AgentBoxD values as process env vars (no
+  `.env` written): health `agentboxd: true`, poller started, config returns
+  `zesty-willow-3025@homingbox.net`. Hero screenshot shows the button; its href is the expected
+  mailto. End-to-end (mail in, verdict reply out) not yet exercised.
+
 ## 2026-10-08: Campaign operator map replaces the force graph
 
 - **Changed:** `campaigns-view.tsx`: the force-directed graph (random layout, overlapping labels) is

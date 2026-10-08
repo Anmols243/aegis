@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { Check, Copy, Mail } from "lucide-react"
 import { toast } from "sonner"
 
@@ -74,6 +75,27 @@ export function LiveCounters() {
         <span className="label-mono">avg analysis time</span>
       </div>
     </div>
+  )
+}
+
+/** Opens the live test inbox page. Shown only while the AgentBoxD inbox is live. */
+export function EmailTestButton() {
+  const [cfg, setCfg] = React.useState<PublicConfig | null>(null)
+  React.useEffect(() => {
+    api.publicConfig().then(setCfg).catch(() => setCfg(null))
+  }, [])
+  const addr = cfg?.inbox_address
+  if (!addr || !cfg?.features?.inbox) return null
+  return (
+    <Link
+      href="/live"
+      title="Open the live test inbox"
+      className="inline-flex min-h-12 max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full border border-lime/40 bg-surface/80 px-7 py-2 text-sm font-medium text-ink backdrop-blur transition-colors hover:border-lime hover:text-lime"
+    >
+      <Mail className="size-4 shrink-0 text-lime" aria-hidden="true" />
+      Send a random email to
+      <span className="break-all font-mono text-[13px] text-lime">{addr}</span>
+    </Link>
   )
 }
 
