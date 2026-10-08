@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     # long-poll the inbox for new mail; unset = on unless a webhook secret is configured
     agentboxd_poll: bool | None = None
     agentboxd_auto_reply: bool = True         # reply in-thread with the verdict card
+    # In a workspace that screens agent mail, take mail before its check finishes (no
+    # permission needed) and, with a key that has messages:release, mail it held.
+    agentboxd_include_unscreened: bool = True
+    agentboxd_include_held: bool = False
     agentboxd_base_url: str = "https://api.agentboxd.com"
 
     @field_validator("cors_origins", mode="before")

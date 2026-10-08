@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timedelta, timezone
 
+import httpx
 from sqlalchemy import select
 
 from ..core.logging import get_logger
@@ -24,6 +25,19 @@ def _after(ts: str) -> str:
     except ValueError:
         return ts
     return t.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.") + f"{t.microsecond // 1000:03d}Z"
+
+
+def _retry_after(response: httpx.Response) -> float:
+    """Seconds to back off after a 429: the API's hint, else the header, else 15."""
+    try:
+        hint = response.json()["error"]["details"]["retry_after_seconds"]
+        return min(max(float(hint), 1.0), 120.0)
+    except Exception:  # noqa: BLE001 - fall through to the header
+        pass
+    try:
+        return min(max(float(response.headers.get("retry-after", "")), 1.0), 120.0)
+    except ValueError:
+        return 15.0
 
 
 async def poll_forever(agentboxd: AgentBoxD, on_enqueue) -> None:
@@ -51,6 +65,12 @@ async def poll_forever(agentboxd: AgentBoxD, on_enqueue) -> None:
             if exists:
                 continue
             msg = await agentboxd.get_message(mid)
+            if msg.get("withheld"):
+                # held by AgentBoxD screening: only metadata comes back, nothing to analyze
+                log.warning("message withheld by AgentBoxD screening",
+                            extra={"message_id": mid,
+                                   "reason": (msg.get("screening") or {}).get("reason")})
+                continue
             raw, html = message_to_raw(msg)
             async with session_scope() as s:
                 await svc.create(s, source="poller", raw=raw, raw_html=html,
@@ -59,6 +79,10 @@ async def poll_forever(agentboxd: AgentBoxD, on_enqueue) -> None:
             on_enqueue()
         except asyncio.CancelledError:
             raise
+        except httpx.HTTPStatusError as e:
+            wait = _retry_after(e.response) if e.response.status_code == 429 else 5
+            log.warning("poll error", extra={"error": str(e)[:200], "retry_in_s": wait})
+            await asyncio.sleep(wait)
         except Exception as e:  # noqa: BLE001 - survive network blips
             log.warning("poll error", extra={"error": str(e)[:200]})
             await asyncio.sleep(5)

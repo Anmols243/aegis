@@ -73,9 +73,18 @@ class AgentBoxD:
         return httpx.AsyncClient(base_url=self.s.agentboxd_base_url, timeout=timeout,
                                  headers={"Authorization": f"Bearer {self.s.agentboxd_api_key}"})
 
+    def _screening(self) -> dict:
+        """Opt-ins for a workspace that screens agent mail (agentboxd.com/docs/api#screening)."""
+        p = {}
+        if self.s.agentboxd_include_unscreened:
+            p["include_unscreened"] = "true"
+        if self.s.agentboxd_include_held:
+            p["include_held"] = "true"
+        return p
+
     async def get_message(self, message_id: str) -> dict:
         async with self._client() as c:
-            r = await c.get(f"/v1/messages/{message_id}")
+            r = await c.get(f"/v1/messages/{message_id}", params=self._screening())
             r.raise_for_status()
             data = r.json()
             if not isinstance(data, dict):
@@ -85,7 +94,7 @@ class AgentBoxD:
             return data["data"] if isinstance(data.get("data"), dict) else data
 
     async def wait_inbound(self, since: str | None, timeout_s: int = 60) -> dict | None:
-        params: dict = {"timeout": timeout_s, "direction": "inbound"}
+        params: dict = {"timeout": timeout_s, "direction": "inbound", **self._screening()}
         if since:
             params["since"] = since
         async with self._client(timeout=timeout_s + 10) as c:
