@@ -208,6 +208,16 @@ def test_poller_steps_past_inclusive_since():
     assert _after("2026-10-08T14:17:06.999Z") == "2026-10-08T14:17:07.000Z"
 
 
+def test_poller_since_follows_created_at_and_never_goes_back():
+    # AgentBoxD filters `since` on created_at, a few ms after received_at. Taking received_at
+    # returned the same message forever (a tight loop that spent the key's rate limit).
+    from aegis.workers.poller import _advance
+    stub = {"received_at": "2026-10-09T22:09:36.696Z", "created_at": "2026-10-09T22:09:36.705Z"}
+    assert _advance("2026-10-09T22:00:00.000Z", stub) == "2026-10-09T22:09:36.705Z"
+    assert _advance("2026-10-09T22:09:36.706Z", stub) == "2026-10-09T22:09:36.706Z"
+    assert _advance("2026-10-09T22:00:00.000Z", {}) == "2026-10-09T22:00:00.000Z"
+
+
 def test_inbox_polling_default():
     from aegis.core.config import Settings
     base = {"agentboxd_api_key": "k", "agentboxd_inbox_id": "i"}

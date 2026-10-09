@@ -74,6 +74,8 @@ class Settings(BaseSettings):
     agentboxd_inbox_address: str | None = None
     # long-poll the inbox for new mail; unset = on unless a webhook secret is configured
     agentboxd_poll: bool | None = None
+    # on startup also take mail from this many seconds back (already analyzed mail is skipped)
+    agentboxd_backfill_s: int = 0
     agentboxd_auto_reply: bool = True         # reply in-thread with the verdict card
     # In a workspace that screens agent mail, take mail before its check finishes (no
     # permission needed) and, with a key that has messages:release, mail it held.

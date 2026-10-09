@@ -1,6 +1,7 @@
 """AgentBoxD inbox poller (on unless a webhook secret is set; AGENTBOXD_POLL forces it): the
-webhooks that needs no public URL. Only mail arriving after startup is taken,
-so old messages are never re-analyzed or auto-replied to."""
+webhooks that needs no public URL. Only mail arriving after startup is taken (or within
+AGENTBOXD_BACKFILL_S before it), and mail already analyzed is skipped, so old messages are
+never re-analyzed or auto-replied to."""
 from __future__ import annotations
 
 import asyncio
@@ -27,6 +28,13 @@ def _after(ts: str) -> str:
     return t.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.") + f"{t.microsecond // 1000:03d}Z"
 
 
+def _advance(since: str, stub: dict) -> str:
+    """The next `since`: the message's created_at (what AgentBoxD filters on; received_at is
+    a few ms earlier and would return the same message again), never moving backwards."""
+    ts = stub.get("created_at") or stub.get("received_at")
+    return max(since, ts) if ts else since
+
+
 def _retry_after(response: httpx.Response) -> float:
     """Seconds to back off after a 429: the API's hint, else the header, else 15."""
     try:
@@ -41,7 +49,8 @@ def _retry_after(response: httpx.Response) -> float:
 
 
 async def poll_forever(agentboxd: AgentBoxD, on_enqueue) -> None:
-    since = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    start = datetime.now(timezone.utc) - timedelta(seconds=max(agentboxd.s.agentboxd_backfill_s, 0))
+    since = start.strftime("%Y-%m-%dT%H:%M:%S.000Z")
     last_id = None
     log.info("poller started", extra={"inbox": agentboxd.s.agentboxd_inbox_id})
     while True:
@@ -50,13 +59,13 @@ async def poll_forever(agentboxd: AgentBoxD, on_enqueue) -> None:
             if not stub:
                 continue
             mid = stub.get("id")
-            since = stub.get("received_at") or stub.get("created_at") or since
-            if not mid:
-                continue
             if mid == last_id:
                 # the API returned the same message again (inclusive `since`):
                 # step past it instead of spinning on it
-                since = _after(since)
+                since = _after(_advance(since, stub))
+                continue
+            since = _advance(since, stub)
+            if not mid:
                 continue
             last_id = mid
             async with session_scope() as s:
