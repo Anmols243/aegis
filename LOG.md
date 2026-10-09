@@ -2,6 +2,50 @@
 
 Newest first.
 
+## 2026-10-10: Sender linking for test-inbox mail (D14)
+
+- **Why:** hand-written mail (not sent via the Mail app button) lacked the code, so it was fetched
+  and replied to but shown to nobody.
+- **Changed:** a coded email links its sender address (hashed) to the browser; later mail from that
+  address shows up without a code. Wiping history removes the link. Live and privacy copy updated.
+- **Verified:** 102 backend tests (new: link learned, case-insensitive address, stranger stays
+  unowned, wipe forgets the link); frontend `tsc`, `lint` and `next build` clean.
+
+## 2026-10-10: Per-browser privacy, personal inbox codes, Delete my history (D13)
+
+- **Changed:** every case is visible only to the browser that made it. Test-inbox mail is tied to a
+  browser by a personal code (`AEGIS-XXXXXX`) in the subject (`services/claims.py`, table
+  `viewer_codes`); `/live` shows the code, the Mail app button adds it. Mail without a known code is
+  answered by email but listed for nobody. Cases: built-in samples plus the viewer's own only.
+- **Added:** `DELETE /api/v1/history` and a "Delete my history" button on Cases (with confirm).
+- **Changed:** default retention 7 days to 1. Privacy page, README, `docs/API.md` updated.
+- **Removed:** the censored test-inbox section added to Cases earlier today (owned mail now comes
+  through the normal list).
+- **Verified:** 101 backend tests (new: per-browser feed, code matching, wipe only touches own
+  rows); `tsc`, `lint`, `next build` clean; browser check of `/live` (code shown) and `/cases`
+  (samples only, delete button). A real email carrying a code was not sent in this session.
+
+## 2026-10-10: Poller spin fix, startup backfill, test inbox mail in Cases
+
+- **Fixed (poller):** after the first email the poller looped forever. It set `since` from the
+  message's `received_at`, but AgentBoxD filters on `created_at` (a few ms later), so the same
+  message came back; the "same message" branch stepped 1 ms forward and the next pass reset `since`
+  to `received_at` again. Each pass was an API call, so it spent the key's 120 requests/min and
+  every later poll got 429: new mail never arrived. `since` now follows `created_at` and never moves
+  back (`_advance`). Any other backend still running the old code drains its key the same way.
+- **Added:** `AGENTBOXD_BACKFILL_S` (default 0): on startup also take mail from that many seconds
+  back; already analyzed mail is skipped by `external_id`.
+- **Corrected:** held mail is readable with `include_unscreened` (the full body comes back), so
+  `messages:release` is not needed; the earlier "held mail is the cause" note was wrong.
+- **Verified:** 101 tests pass (run from the repo root; with a `backend/.env` present, two config
+  tests read it and fail). Live: the missed "anmol" email was backfilled, analyzed and replied to;
+  the key's remaining quota stayed flat afterwards (no spin).
+- **Added (frontend):** Cases lists finished test-inbox emails, censored as on `/live` (data from
+  `/inbox/live`, no backend or privacy change). They link to `/live?email=<key>`, which pins that
+  email. Public inbox mail is skipped there since it already appears in the regular list.
+- **Verified:** `tsc`, `lint`, `next build` pass; `/live?email=<key>` opens the pinned email in a
+  browser. The Cases row was not seen rendered: the local DB has no private inbox mail yet.
+
 ## 2026-10-09: Review fixes (sandbox stall, polling, races), vision skip, hero button
 
 - **Fixed (security):** `sandbox.classify_html` used backtracking regexes on the fetched page. A

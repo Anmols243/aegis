@@ -43,7 +43,9 @@ scams (fake CEO asking for gift cards) contain no malicious link at all, so link
 - **The test inbox is public.** Mail sent to the AEGIS address is listed on `/live`, censored on
   the server (names to initials, addresses to `sh***@domain`, long numbers and codes shortened;
   links kept as evidence).
-- **Short retention.** Private email content is deleted after 7 days (`PRIVATE_RETENTION_DAYS`); the verdict stays.
+- **Short retention.** Private email content is deleted after 24 hours (`PRIVATE_RETENTION_DAYS=1`); the verdict stays.
+- **Per-browser privacy.** Every case is visible only to the browser that submitted it; test-inbox mail is
+  tied to a browser by a personal code in the subject. "Delete my history" on Cases erases it all.
 - **What leaves the server:** email content is sent to Featherless for model inference; mail you
   forward to the AEGIS inbox passes through AgentBoxD. Nothing else is shared.
 

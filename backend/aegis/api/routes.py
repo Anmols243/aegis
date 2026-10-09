@@ -25,7 +25,7 @@ from ..db.models import Analysis, AuditEvent, Mailbox, RedteamRun
 from ..db.session import session_scope
 from ..providers import oauth
 from ..providers.agentboxd import message_scores, message_to_raw, verify_signature
-from ..services import abuse, campaigns, livefeed, mailboxes, redteam
+from ..services import abuse, campaigns, claims, livefeed, mailboxes, redteam
 from ..services import analysis as svc
 from ..services.samples import BY_ID as SAMPLES_BY_ID
 from ..services.samples import SAMPLES
@@ -117,26 +117,28 @@ async def config_public() -> dict:
 
 
 @private.get("/inbox/live")
-async def inbox_live(limit: int = 20) -> dict:
-    """Recent mail that reached the AgentBoxD inbox, partially censored, with pipeline
-    progress, for the live test page (services/livefeed.py)."""
+async def inbox_live(request: Request, limit: int = 20) -> dict:
+    """This browser's mail in the AgentBoxD test inbox (the mail that carried its code),
+    partially censored, with pipeline progress, for the live test page."""
     s = get_settings()
     if not s.agentboxd_configured:
-        return {"enabled": False, "address": None, "public": False, "items": []}
+        return {"enabled": False, "address": None, "public": False, "code": None, "items": []}
+    viewer = viewer_hash(request)
     async with session_scope() as session:
-        items = await livefeed.feed(session, s, max(1, min(limit, 50)))
+        code = await claims.code_for(session, viewer) if viewer else None
+        items = await livefeed.feed(session, s, max(1, min(limit, 50)), viewer)
     return {"enabled": True, "address": s.agentboxd_inbox_address, "public": s.inbox_public,
-            "items": items}
+            "code": code, "items": items}
 
 
 @private.get("/inbox/live/{key}")
-async def inbox_live_detail(key: str) -> dict:
+async def inbox_live_detail(key: str, request: Request) -> dict:
     """The censored dissection of one inbox email, by its opaque row key."""
     s = get_settings()
     if not s.agentboxd_configured or not re.fullmatch(r"[0-9a-f]{12}", key):
         raise HTTPException(404, "not found")
     async with session_scope() as session:
-        out = await livefeed.detail(session, s, key)
+        out = await livefeed.detail(session, s, key, viewer_hash(request))
     if out is None:
         raise HTTPException(404, "not found")
     return out
@@ -197,9 +199,10 @@ async def list_analyses(request: Request, limit: int = 50, cursor: str | None = 
         if mine:
             stmt = stmt.where(Analysis.owner_hash == (viewer or "-"))
         elif viewer:
-            stmt = stmt.where(or_(Analysis.visibility == "public", Analysis.owner_hash == viewer))
+            # the built-in demo samples plus this browser's own analyses; nobody else's
+            stmt = stmt.where(or_(Analysis.source == "sample", Analysis.owner_hash == viewer))
         else:
-            stmt = stmt.where(Analysis.visibility == "public")
+            stmt = stmt.where(Analysis.source == "sample")
         if source:
             stmt = stmt.where(Analysis.source == source)
         else:
@@ -230,6 +233,16 @@ async def _get(s, analysis_id: str) -> Analysis:
     if a is None:
         raise HTTPException(404, "not found")
     return a
+
+
+@private.delete("/history")
+async def delete_history(request: Request) -> dict:
+    """Erase everything this browser analyzed: pasted and emailed cases alike."""
+    owner = require_viewer(request)
+    deleted = await svc.delete_owned(owner)
+    async with session_scope() as s:
+        s.add(AuditEvent(event="history_deleted", detail={"count": deleted}))
+    return {"deleted": deleted}
 
 
 @private.get("/analyses/{analysis_id}")

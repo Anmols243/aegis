@@ -123,3 +123,30 @@ Append-only. A superseded decision gets a new entry; old entries are not rewritt
 - **Consequences:** Mail sent to the test inbox is shown publicly on `/live`, partially censored
   server-side (`services/livefeed.py`); the privacy page and README say so. Restoring mailbox
   sign-in means restoring the deleted pages from git history (commit before this change).
+
+## D13 (Oct 10, 2026): Every case is private to the browser that made it; supersedes D12's public /live
+
+- **Decision:** Test-inbox mail is tied to a browser by a personal code (`AEGIS-XXXXXX`, table
+  `viewer_codes`, `services/claims.py`) in the subject or body. `/live` lists only the viewer's own
+  mail; Cases lists the built-in samples plus the viewer's own analyses, nothing else. Mail without
+  a known code is analyzed and replied to by email but listed for nobody. Default retention drops
+  from 7 days to 1. `DELETE /history` erases everything a browser owns.
+- **Context:** The user wants each visitor to see only their own tests once deployed, with nothing
+  shown globally, and a way to wipe their history. Everyone mails one shared AgentBoxD address, so
+  ownership needs a token the sender carries; a per-visitor temporary inbox was the alternative but
+  needs a workspace-wide key and a poller rewrite, too risky on deadline day.
+- **Consequences:** Anyone who learns a code can push mail into that browser's view (it cannot read
+  anything). Public inbox rows from before this change no longer appear in Cases. AgentBoxD still
+  keeps its own copy of received mail; the privacy page says so. Clearing cookies loses the code
+  and the history with it.
+
+## D14 (Oct 10, 2026): A coded email links its sender address to the browser
+
+- **Decision:** When test-inbox mail carries a browser's code, the SHA-256 of its lower-cased sender
+  address is linked to that browser (`sender_links`). Later mail from that address is owned by
+  the same browser without a code. The latest coded email wins; "Delete my history" drops the link.
+- **Context:** Mail written by hand (not through the Mail app button) never had the code, so it was
+  fetched and answered but never shown; users read that as "not fetching".
+- **Consequences:** The From header can be forged, so anyone who forges a linked address can push
+  mail into that browser's view (they still cannot read anything). Mail sent before the first
+  coded email stays unowned.

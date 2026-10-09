@@ -129,6 +129,25 @@ class RedteamRun(Base):
     variants: Mapped[list] = mapped_column(JSON, default=list)  # [{index, axes, text, analysis_id}]
 
 
+class ViewerCode(Base):
+    """A browser's personal test-inbox code: mail that carries it is shown to that browser only."""
+    __tablename__ = "viewer_codes"
+
+    code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    owner_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SenderLink(Base):
+    """Which browser a sender's test-inbox mail goes to, learned from their last coded email.
+    Only a hash of the address is stored."""
+    __tablename__ = "sender_links"
+
+    sender_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner_hash: Mapped[str] = mapped_column(String(64), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
 

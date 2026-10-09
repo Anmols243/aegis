@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 
 import pytest
 
@@ -194,52 +195,109 @@ def test_webhook_signature_and_idempotency(settings_env, fake_llm, no_network):
         assert a["verdict"]["contributions"].get("agentboxd") is not None
 
 
-@pytest.mark.parametrize("public", [False, True])
-def test_inbox_live_feed(settings_env, fake_llm, no_network, public):
-    from fastapi.testclient import TestClient
+VIEWER_A = {"X-Aegis-Viewer": "viewer-a-" + "a" * 40}
+VIEWER_B = {"X-Aegis-Viewer": "viewer-b-" + "b" * 40}
 
+
+def _inbox_app(settings_env):
     from aegis.main import create_app
     for k, v in {"AGENTBOXD_WEBHOOK_SECRET": "whsec", "AGENTBOXD_API_KEY": "k",
                  "AGENTBOXD_INBOX_ID": "inb_1", "AGENTBOXD_INBOX_ADDRESS": "test@inbox.example",
-                 "AGENTBOXD_AUTO_REPLY": "false", "INBOX_PUBLIC": str(public).lower()}.items():
+                 "AGENTBOXD_AUTO_REPLY": "false"}.items():
         settings_env.setenv(k, v)
     config_mod.get_settings.cache_clear()
+    return create_app()
+
+
+def _deliver(c, mid: str, subject: str, sender: str = "Shabeeh Khan <shabeeh.k@gmail.com>") -> str:
     event = {"type": "message.received", "data": {"message": {
-        "id": "msg_live", "inbox_id": "inb_1", "subject": "Verify",
-        "from": "Shabeeh Khan <shabeeh.k@gmail.com>",
+        "id": mid, "inbox_id": "inb_1", "subject": subject,
+        "from": sender,
         "text": ("Verify your identity immediately at http://paypa1-secure.com/v or call "
                  "+1 800-555-0142. Reply to shabeeh.k@gmail.com.")}}}
     body = json.dumps(event).encode()
-    with TestClient(create_app()) as c:
-        ok = c.post("/api/v1/ingest/agentboxd", content=body,
-                    headers={"X-Mailroom-Signature": _sign(body, "whsec")})
-        wait_done(c, ok.json()["id"])
-        live = c.get("/api/v1/inbox/live").json()
-        detail = c.get(f"/api/v1/inbox/live/{live['items'][0]['key']}").json()
-        assert c.get("/api/v1/inbox/live/0123456789ab").status_code == 404
-        assert c.get("/api/v1/inbox/live/not-a-key").status_code == 404
+    ok = c.post("/api/v1/ingest/agentboxd", content=body,
+                headers={"X-Mailroom-Signature": _sign(body, "whsec")})
+    wait_done(c, ok.json()["id"])
+    return ok.json()["id"]
+
+
+def test_inbox_live_feed_is_per_browser(settings_env, fake_llm, no_network):
+    from fastapi.testclient import TestClient
+    with TestClient(_inbox_app(settings_env)) as c:
+        code = c.get("/api/v1/inbox/live", headers=VIEWER_A).json()["code"]
+        assert re.fullmatch(r"AEGIS-[A-Z2-9]{6}", code)
+        # stable per browser, different across browsers, none without a browser
+        assert c.get("/api/v1/inbox/live", headers=VIEWER_A).json()["code"] == code
+        assert c.get("/api/v1/inbox/live", headers=VIEWER_B).json()["code"] != code
+        assert c.get("/api/v1/inbox/live").json()["code"] is None
+        mine = _deliver(c, "msg_a", f"Verify [{code.lower()}]")   # case-insensitive
+        _deliver(c, "msg_none", "Verify", "Someone <other@example.com>")   # no code: nobody's
+        live = c.get("/api/v1/inbox/live", headers=VIEWER_A).json()
+        detail = c.get(f"/api/v1/inbox/live/{live['items'][0]['key']}", headers=VIEWER_A).json()
+        other = c.get("/api/v1/inbox/live", headers=VIEWER_B).json()
+        other_detail = c.get(f"/api/v1/inbox/live/{live['items'][0]['key']}", headers=VIEWER_B)
+        anon = c.get("/api/v1/inbox/live").json()
+        cases_a = c.get("/api/v1/analyses", headers=VIEWER_A).json()["items"]
+        cases_b = c.get("/api/v1/analyses", headers=VIEWER_B).json()["items"]
+        assert c.get("/api/v1/inbox/live/0123456789ab", headers=VIEWER_A).status_code == 404
+        assert c.get("/api/v1/inbox/live/not-a-key", headers=VIEWER_A).status_code == 404
     assert live["enabled"] is True and live["address"] == "test@inbox.example"
-    [item] = live["items"]
-    assert item["status"] == "done" and item["label"] and item["stages"] and item["key"]
-    # a test inbox: subject, masked sender and a censored preview are always shown
-    assert item["subject"] == "Verify" and item["sender"] == "sh***@gmail.com"
+    [item] = live["items"]                     # only the mail that carried A's code
+    assert item["id"] == mine and item["status"] == "done" and item["stages"]
+    assert item["sender"] == "sh***@gmail.com"
     assert "paypa1-secure.com" in item["preview"]           # evidence stays
     assert "0142" not in item["preview"] and "***42" in item["preview"]
     assert "shabeeh.k@" not in item["preview"]
-    # the id (opens the uncensored case) only for public inbox mail
-    assert item["id"] == (ok.json()["id"] if public else None)
-    assert item["private"] is (not public)
-    # the dissection works either way and is censored
-    assert detail["status"] == "done" and detail["label"] and detail["stages"]
-    assert detail["id"] is None and detail["share_token"] is None
+    assert detail["status"] == "done" and detail["id"] == mine and detail["share_token"] is None
     dumped = json.dumps(detail)
-    assert "shabeeh.k@gmail.com" not in dumped and "Shabeeh Khan" not in dumped
-    assert "555-0142" not in dumped and "paypa1-secure.com" in dumped
+    assert "shabeeh.k@gmail.com" not in dumped and "555-0142" not in dumped
+    # another browser, or none, sees nothing of it
+    assert other["items"] == [] and anon["items"] == [] and other_detail.status_code == 404
+    assert mine in [a["id"] for a in cases_a]
+    assert all(a["source"] == "sample" for a in cases_b)
+
+
+def test_sender_linked_by_a_coded_email(settings_env, fake_llm, no_network):
+    """After one coded email, mail from the same address needs no code; a wipe forgets it."""
+    from fastapi.testclient import TestClient
+    with TestClient(_inbox_app(settings_env)) as c:
+        code = c.get("/api/v1/inbox/live", headers=VIEWER_A).json()["code"]
+        before = _deliver(c, "msg_0", "Hello", "Me <ME@Example.com>")    # not linked yet
+        coded = _deliver(c, "msg_1", f"Hello {code}", "Me <me@example.com>")
+        later = _deliver(c, "msg_2", "Plain subject", "Other Name <me@example.COM>")
+        stranger = _deliver(c, "msg_3", "Plain subject", "x <stranger@example.com>")
+        ids = {i["id"] for i in c.get("/api/v1/inbox/live", headers=VIEWER_A).json()["items"]}
+        assert ids == {coded, later} and before not in ids and stranger not in ids
+        c.delete("/api/v1/history", headers=VIEWER_A)
+        after = _deliver(c, "msg_4", "Plain subject", "Me <me@example.com>")
+        assert c.get("/api/v1/inbox/live", headers=VIEWER_A).json()["items"] == []
+        assert c.get(f"/api/v1/analyses/{after}").status_code == 200   # exists, owned by nobody
+
+
+def test_delete_history_erases_only_own(settings_env, fake_llm, no_network):
+    from fastapi.testclient import TestClient
+    with TestClient(_inbox_app(settings_env)) as c:
+        code = c.get("/api/v1/inbox/live", headers=VIEWER_A).json()["code"]
+        emailed = _deliver(c, "msg_a", f"Verify {code}")
+        pasted = c.post("/api/v1/analyses", json={"raw": "Subject: hi\n\nSee you at lunch."},
+                        headers=VIEWER_A).json()["id"]
+        kept = c.post("/api/v1/analyses", json={"raw": "Subject: yo\n\nSee you at dinner."},
+                      headers=VIEWER_B).json()["id"]
+        wait_done(c, pasted)
+        wait_done(c, kept)
+        assert c.delete("/api/v1/history").status_code == 403      # needs a browser
+        assert c.delete("/api/v1/history", headers=VIEWER_A).json() == {"deleted": 2}
+        assert c.get(f"/api/v1/analyses/{emailed}").status_code == 404
+        assert c.get(f"/api/v1/analyses/{pasted}").status_code == 404
+        assert c.get(f"/api/v1/analyses/{kept}").status_code == 200
+        assert c.get("/api/v1/inbox/live", headers=VIEWER_A).json()["items"] == []
+        assert c.get("/api/v1/analyses?mine=true", headers=VIEWER_A).json()["items"] == []
 
 
 def test_inbox_live_disabled_without_agentboxd(client):
     assert client.get("/api/v1/inbox/live").json() == {
-        "enabled": False, "address": None, "public": False, "items": []}
+        "enabled": False, "address": None, "public": False, "code": None, "items": []}
 
 
 def test_webhook_disabled_without_secret(client):

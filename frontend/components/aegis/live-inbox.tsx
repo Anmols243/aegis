@@ -23,7 +23,11 @@ export function LiveInboxView() {
   const [data, setData] = React.useState<LiveInbox | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [fresh, setFresh] = React.useState<Set<string>>(new Set())
-  const [pinned, setPinned] = React.useState<string | null>(null)
+  // /live?email=<key> (linked from Cases) opens that email instead of following the newest.
+  // Safe on the server: nothing that depends on it renders before the first poll returns.
+  const [pinned, setPinned] = React.useState<string | null>(() =>
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("email"),
+  )
   const known = React.useRef<Set<string> | null>(null)
 
   React.useEffect(() => {
@@ -73,7 +77,7 @@ export function LiveInboxView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <AddressBar address={data.address} offline={!!error} />
+      <AddressBar address={data.address} code={data.code} offline={!!error} />
       <div className="grid gap-4 lg:h-[calc(100dvh-17rem)] lg:min-h-[560px] lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <section aria-labelledby="feed-title" className="hud flex min-h-0 min-w-0 flex-col p-2">
           <div className="flex items-baseline justify-between gap-2 px-3 pb-2 pt-3">
@@ -115,9 +119,19 @@ export function LiveInboxView() {
   )
 }
 
-function AddressBar({ address, offline }: { address: string; offline: boolean }) {
+function AddressBar({ address, code, offline }: { address: string; code: string | null; offline: boolean }) {
   const [copied, setCopied] = React.useState(false)
-  const mailto = `mailto:${address}?subject=${encodeURIComponent(MAIL_SUBJECT)}&body=${encodeURIComponent(MAIL_BODY)}`
+  const subject = code ? `${MAIL_SUBJECT} ${code}` : MAIL_SUBJECT
+  const mailto = `mailto:${address}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(MAIL_BODY)}`
+  const copy = (text: string, what: string) =>
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopied(true)
+        toast.success(`${what} copied`)
+        window.setTimeout(() => setCopied(false), 1600)
+      },
+      () => toast.error("Could not copy"),
+    )
   return (
     <section aria-label="Test inbox address" className="hud flex flex-col gap-3 px-4 py-3.5 sm:px-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
@@ -140,16 +154,7 @@ function AddressBar({ address, offline }: { address: string; offline: boolean })
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
-            onClick={() =>
-              navigator.clipboard.writeText(address).then(
-                () => {
-                  setCopied(true)
-                  toast.success("Address copied")
-                  window.setTimeout(() => setCopied(false), 1600)
-                },
-                () => toast.error("Could not copy"),
-              )
-            }
+            onClick={() => copy(address, "Address")}
             className="inline-flex h-10 items-center gap-2 rounded-full bg-lime px-4 text-sm font-semibold text-black shadow-[0_0_20px_rgba(217,255,61,0.3)] transition-transform active:scale-[0.98]"
           >
             {copied ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
@@ -164,10 +169,25 @@ function AddressBar({ address, offline }: { address: string; offline: boolean })
           </a>
         </div>
       </div>
+      {code ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+          <span>Put your code in the subject:</span>
+          <button
+            type="button"
+            onClick={() => copy(code, "Code")}
+            title="Copy your code"
+            className="inline-flex items-center gap-2 rounded-full border border-lime/40 bg-lime/[0.06] px-3 py-1 font-mono text-sm font-semibold tracking-[0.08em] text-lime hover:bg-lime/[0.12]"
+          >
+            {code}
+            <Copy className="size-3.5" aria-hidden="true" />
+          </button>
+          <span className="text-xs text-faint">Mail app adds it for you. Needed once per sender address.</span>
+        </div>
+      ) : null}
       <p className="flex items-start gap-2 text-xs text-faint">
         <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-        Send any email to this address: it shows up below within seconds and the verdict is replied to you. Public test inbox: names, addresses and
-        numbers are partially censored. Do not send personal mail.
+        Only your mail shows up here, for this browser alone. Send one email with your code; after that, mail from the same address shows up
+        without it. Other mail is still answered by email but shown to nobody. Your cases are deleted after 24 hours, or right away from Cases.
       </p>
     </section>
   )
@@ -182,7 +202,7 @@ function Waiting() {
         <MailOpen className="size-5 text-lime" aria-hidden="true" />
       </span>
       <p className="label-mono text-[12px] text-muted-foreground">Waiting for mail</p>
-      <p className="max-w-xs text-sm text-faint">Send an email to the address above. It appears here the moment it lands.</p>
+      <p className="max-w-xs text-sm text-faint">Send an email to the address above with your code in the subject. It appears here the moment it lands.</p>
     </div>
   )
 }

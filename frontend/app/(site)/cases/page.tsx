@@ -12,8 +12,8 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
         <p className="label-mono mb-2 text-lime">Cases</p>
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">Cases AEGIS has examined.</h1>
         <p className="mt-3 text-muted-foreground">
-          Public samples and red-team runs, plus your own private analyses from this browser. Other people&apos;s emails never show up here. Open any
-          case to see the evidence.
+          The built-in samples, plus the emails you pasted or sent from this browser. Yours are visible to this browser only, deleted after 24
+          hours, and you can erase them any time. Open any case to see the evidence.
         </p>
       </div>
       <CasesFeed initialMine={mine === "true"} />

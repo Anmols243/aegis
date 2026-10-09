@@ -19,7 +19,7 @@ from ..pipeline.parse import parse_email
 from ..pipeline.runner import STAGE_NAMES, run_pipeline
 from ..providers.agentboxd import AgentBoxD, message_scores, message_to_raw
 from ..providers.llm import LLMClient
-from . import campaigns
+from . import campaigns, claims
 
 log = get_logger("analysis")
 
@@ -48,6 +48,10 @@ async def create(session, *, source: str, raw: str, raw_html: str = "",
                  inbox_id: str | None = None, needs_fetch: bool = False,
                  owner_hash: str | None = None, mailbox_id: str | None = None) -> Analysis:
     preview = parse_email(raw, raw_html) if raw or raw_html else None
+    if owner_hash is None and source in ("webhook", "poller") and preview:
+        # test-inbox mail belongs to the browser whose code it carries, or whose code its
+        # sender used before (services/claims.py)
+        owner_hash = await claims.resolve(session, preview.subject, preview.text, preview.sender)
     a = Analysis(id=new_id(), source=source, status="queued", raw=raw or "",
                  raw_html=raw_html or "", provider_scores=provider_scores or {},
                  external_id=external_id, inbox_id=inbox_id, needs_fetch=int(needs_fetch),
@@ -123,8 +127,14 @@ async def process(analysis_id: str, settings: Settings, llm: LLMClient,
         raw, raw_html = message_to_raw(msg)
         scores = message_scores(msg) or scores
         async with session_scope() as s:
-            await s.execute(update(Analysis).where(Analysis.id == analysis_id).values(
-                raw=raw, raw_html=raw_html, provider_scores=scores, needs_fetch=0))
+            values = {"raw": raw, "raw_html": raw_html, "provider_scores": scores, "needs_fetch": 0}
+            row = await s.get(Analysis, analysis_id)
+            if row is not None and row.owner_hash is None:
+                p = parse_email(raw, raw_html)
+                owner = await claims.resolve(s, p.subject, p.text, p.sender)
+                if owner:
+                    values["owner_hash"] = owner
+            await s.execute(update(Analysis).where(Analysis.id == analysis_id).values(**values))
 
     started = time.monotonic()
     bus.publish(analysis_id, "status", {"status": "running"})
@@ -281,6 +291,28 @@ def purge_row(a: Analysis, settings: Settings) -> None:
     path = screenshot_path(settings, a.id)
     if os.path.exists(path):
         os.remove(path)
+
+
+async def delete_owned(owner_hash: str) -> int:
+    """Erase every analysis this browser owns (rows, stage runs, entities, screenshots) and
+    forget which sender addresses route to it. Returns how many analyses were deleted."""
+    from sqlalchemy import delete as sa_delete
+
+    from ..db.models import Entity, SenderLink
+    s_ = get_settings()
+    async with session_scope() as s:
+        await s.execute(sa_delete(SenderLink).where(SenderLink.owner_hash == owner_hash))
+        ids = list((await s.execute(select(Analysis.id).where(
+            Analysis.owner_hash == owner_hash))).scalars())
+        if ids:
+            await s.execute(sa_delete(Entity).where(Entity.analysis_id.in_(ids)))
+            await s.execute(sa_delete(StageRun).where(StageRun.analysis_id.in_(ids)))
+            await s.execute(sa_delete(Analysis).where(Analysis.id.in_(ids)))
+    for aid in ids:
+        path = screenshot_path(s_, aid)
+        if os.path.exists(path):
+            os.remove(path)
+    return len(ids)
 
 
 async def purge_expired(now: datetime | None = None) -> int:

@@ -159,7 +159,7 @@
     inset: 8px;
     pointer-events: none;
     z-index: 1;
-    border: 1px solid var(--m);
+    border: 2px solid var(--m);
     border-radius: max(0px, calc(var(--hud-r) - 8px));
     transition: border-color 0.2s;
     mask:

@@ -11,9 +11,9 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     body: (
       <ul className="flex list-disc flex-col gap-1.5 pl-5">
         <li>AEGIS has no accounts, no analytics and no ads.</li>
-        <li>Emails you paste or upload are private by default: unlisted, never in the public feed or campaign graph.</li>
-        <li>Emails sent to the test inbox are shown on the public Live page, partially censored.</li>
-        <li>Email text is deleted after a retention period (7 days by default). The verdict is kept.</li>
+        <li>Emails you paste, upload or send to the test inbox are shown only to the browser that sent them: never in a public feed.</li>
+        <li>Email text is deleted after 24 hours by default. The verdict is kept until you erase it.</li>
+        <li>&quot;Delete my history&quot; on the Cases page erases everything this browser analyzed, immediately.</li>
         <li>To analyze an email, its content is sent to AI models hosted by Featherless.</li>
       </ul>
     ),
@@ -25,19 +25,21 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
         <p>For each analysis AEGIS stores the email you submitted, the verdict, the evidence it cites, and how long each step took.</p>
         <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5">
           <li>
-            <strong className="text-ink">Pasted and uploaded emails</strong> are private. After the retention period (7 days by default) the email
-            text is deleted and only the verdict and its summary remain.
+            <strong className="text-ink">Pasted and uploaded emails</strong> are private to your browser. After the retention period (24 hours by
+            default) the email text is deleted and only the verdict and its summary remain. &quot;Delete my history&quot; on the Cases page removes
+            them entirely.
           </li>
           <li>
             <strong className="text-ink">Built-in samples and red-team variants</strong> are synthetic and public.
           </li>
           <li>
-            <strong className="text-ink">Emails sent to the test inbox</strong> are listed on the public{" "}
+            <strong className="text-ink">Emails sent to the test inbox</strong> carrying your personal code (shown on the{" "}
             <Link href="/live" className="text-lime underline-offset-4 hover:underline">
               Live
             </Link>{" "}
-            page with their subject, a preview and the full analysis. Names are cut to initials, addresses to their first two characters, and long
-            numbers and codes are shortened; links and domains stay visible because they are the evidence. Do not send personal mail there.
+            page) are shown to your browser only, with names, addresses and long numbers partially censored. That first coded email links its sender
+            address (stored only as a hash) to your browser, so later mail from it needs no code; &quot;Delete my history&quot; removes the link. Other mail
+            is analyzed and answered by email but shown to nobody. The test inbox is run by AgentBoxD, which keeps its own copy of the mail it receives.
           </li>
           <li>
             <strong className="text-ink">Campaign indicators</strong> (sender, domains, links, phone numbers, a template fingerprint) are kept so that

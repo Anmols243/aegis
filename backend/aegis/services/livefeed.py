@@ -1,11 +1,12 @@
 """Live test inbox feed (/live): mail that reached the AgentBoxD inbox, partially censored.
 
-The test inbox is a demo, so every visitor sees each email's subject, a masked sender,
-a short preview and the full dissection. Personal details are censored on the server:
+Each visitor sees only the mail that carried their personal code (services/claims.py), so
+one browser never sees another's tests. Personal details are still censored on the server
+(the page may be screen-shared):
 addresses keep two characters of the local part, display names keep initials, long
 digit runs (phones, account numbers) keep the last two digits, and long tokens (codes,
 keys) keep four characters. Links and domains stay: they are the evidence. The analysis
-id (the capability that opens the uncensored case) is shared only for public inbox mail.
+id (the capability that opens the full case) goes only to its owner.
 """
 from __future__ import annotations
 
@@ -76,17 +77,20 @@ def _preview(a: Analysis, n: int = 160) -> str:
     return censor(text[:n * 2])[:n]
 
 
-async def recent(session, settings: Settings, limit: int) -> list[Analysis]:
+async def recent(session, settings: Settings, limit: int, viewer: str | None) -> list[Analysis]:
+    if not viewer:
+        return []
     return list((await session.execute(
         select(Analysis)
         .where(Analysis.source.in_(INBOX_SOURCES),
-               Analysis.inbox_id == settings.agentboxd_inbox_id)
+               Analysis.inbox_id == settings.agentboxd_inbox_id,
+               Analysis.owner_hash == viewer)
         .order_by(Analysis.created_at.desc(), Analysis.id.desc())
         .limit(limit))).scalars().all())
 
 
-async def feed(session, settings: Settings, limit: int) -> list[dict]:
-    rows = await recent(session, settings, limit)
+async def feed(session, settings: Settings, limit: int, viewer: str | None) -> list[dict]:
+    rows = await recent(session, settings, limit, viewer)
     stages: dict[str, list[dict]] = {}
     if rows:
         for st in (await session.execute(
@@ -95,7 +99,7 @@ async def feed(session, settings: Settings, limit: int) -> list[dict]:
             stages.setdefault(st.analysis_id, []).append({"name": st.name, "status": st.status})
     return [{
         "key": row_key(a.id),
-        "id": a.id if a.visibility == "public" else None,
+        "id": a.id,
         "created_at": iso(a.created_at), "status": a.status, "label": a.label,
         "score": a.score, "duration_s": a.duration_s,
         "subject": censor(a.subject or "") or None,
@@ -107,9 +111,9 @@ async def feed(session, settings: Settings, limit: int) -> list[dict]:
     } for a in rows]
 
 
-async def detail(session, settings: Settings, key: str) -> dict | None:
-    """The censored dissection of one inbox email, found by its row key."""
-    for a in await recent(session, settings, 50):
+async def detail(session, settings: Settings, key: str, viewer: str | None) -> dict | None:
+    """The censored dissection of one of the viewer's inbox emails, found by its row key."""
+    for a in await recent(session, settings, 50, viewer):
         if row_key(a.id) != key:
             continue
         out = await svc.detail_of(session, a, public=True)
@@ -117,7 +121,7 @@ async def detail(session, settings: Settings, key: str) -> dict | None:
         out["email"]["text"] = text[:4000]
         out["sender"] = mask_sender(a.sender)
         out = censor_tree(out)
-        out["id"], out["key"] = None, key
+        out["id"], out["key"] = a.id, key
         out["share_token"] = None
         return out
     return None

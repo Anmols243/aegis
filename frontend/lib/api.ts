@@ -188,7 +188,7 @@ export interface PublicConfig {
 export interface LiveInboxItem {
   /** Opaque, stable row key (not the analysis id). */
   key: string
-  /** Present only for public inbox mail (INBOX_PUBLIC=true). */
+  /** The analysis id: the feed lists only this browser's own mail. */
   id: string | null
   created_at: string | null
   status: AnalysisStatus
@@ -212,6 +212,8 @@ export interface LiveInbox {
   enabled: boolean
   address: string | null
   public: boolean
+  /** This browser's personal code; mail whose subject carries it is shown to this browser only. */
+  code: string | null
   items: LiveInboxItem[]
 }
 
@@ -388,6 +390,8 @@ export const api = {
     request<Paged<AnalysisSummary>>(
       `/analyses${qs({ limit: p.limit ?? 20, cursor: p.cursor, label: p.label, q: p.q, mine: p.mine ? "true" : null })}`,
     ),
+  /** Erase every case this browser analyzed (pasted and emailed). */
+  deleteHistory: () => request<{ deleted: number }>("/history", { method: "DELETE" }),
   analysis: (id: string) => request<Analysis>(`/analyses/${encodeURIComponent(id)}`),
   abuseReport: (id: string) => request<{ markdown: string }>(`/analyses/${encodeURIComponent(id)}/abuse-report`),
   share: (token: string) => request<Analysis>(`/share/${encodeURIComponent(token)}`),

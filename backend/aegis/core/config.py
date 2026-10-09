@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     aegis_secret_key: str | None = None       # 32 bytes base64url; encrypts mailbox credentials
 
     # --- privacy ---
-    private_retention_days: int = 7           # pasted / inbox mail: body purged after this
+    private_retention_days: int = 1           # pasted / inbox mail: body purged after this
     inbox_public: bool = False                # list AgentBoxD-forwarded mail publicly (demo only)
     mailbox_poll_interval_s: int = 60
     mailbox_max_per_poll: int = 20

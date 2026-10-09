@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Loader2, Mail, Search } from "lucide-react"
+import { Loader2, Mail, Search, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 
 import { EmptyState, ErrorState, LoadingState, VerdictBadge } from "@/components/aegis/bits"
 import { PrivateBadge } from "@/components/aegis/private-badge"
@@ -27,6 +28,7 @@ export function CasesFeed({ initialMine = false }: { initialMine?: boolean }) {
   const [error, setError] = React.useState<string | null>(null)
   const [loadingMore, setLoadingMore] = React.useState(false)
   const [attempt, setAttempt] = React.useState(0)
+  const [wiping, setWiping] = React.useState(false)
   // Bumped on every filter change, so a "load more" that was in flight is dropped.
   const generation = React.useRef(0)
 
@@ -52,6 +54,21 @@ export function CasesFeed({ initialMine = false }: { initialMine?: boolean }) {
       alive = false
     }
   }, [label, q, mine, attempt])
+
+  const wipe = async () => {
+    if (!window.confirm("Delete every email you analyzed from this browser, pasted and emailed? This cannot be undone.")) return
+    setWiping(true)
+    try {
+      const { deleted } = await api.deleteHistory()
+      toast.success(deleted === 1 ? "1 case deleted" : `${deleted} cases deleted`)
+      setItems(null)
+      setAttempt((n) => n + 1)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete your history.")
+    } finally {
+      setWiping(false)
+    }
+  }
 
   const loadMore = async () => {
     if (!cursor) return
@@ -101,6 +118,16 @@ export function CasesFeed({ initialMine = false }: { initialMine?: boolean }) {
             }}
           >
             Mine
+          </button>
+          <button
+            type="button"
+            className="chip inline-flex items-center gap-1.5"
+            title="Erase every email you analyzed from this browser"
+            onClick={wipe}
+            disabled={wiping}
+          >
+            {wiping ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="size-3.5" aria-hidden="true" />}
+            Delete my history
           </button>
         </div>
         <label className="flex items-center gap-2 rounded-full border border-hair bg-surface/90 px-4 py-2 focus-within:border-lime/50 sm:ml-auto sm:w-72">
