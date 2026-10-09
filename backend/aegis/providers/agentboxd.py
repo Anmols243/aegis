@@ -71,7 +71,8 @@ class AgentBoxD:
 
     def _client(self, timeout: float = 30.0) -> httpx.AsyncClient:
         return httpx.AsyncClient(base_url=self.s.agentboxd_base_url, timeout=timeout,
-                                 headers={"Authorization": f"Bearer {self.s.agentboxd_api_key}"})
+                                 headers={"Authorization": f"Bearer {self.s.agentboxd_api_key}"},
+                                 trust_env=False)
 
     def _screening(self) -> dict:
         """Opt-ins for a workspace that screens agent mail (agentboxd.com/docs/api#screening)."""
