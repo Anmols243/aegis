@@ -2,6 +2,19 @@
 
 Newest first.
 
+## 2026-10-10: Recover from missing provider completion choices
+
+- **Observed:** deployed case `a_1a124a7f818ca85c9e8050cff44` failed forensic analysis with
+  `TypeError: 'NoneType' object is not subscriptable`. The client indexed provider choices
+  without validating them, which bypassed the forensic stage's invalid-output retry.
+- **Fixed:** missing or empty choices and absent completion text now raise `LLMBadOutput`,
+  allowing the bounded forensic retry. The completion after a token-budget retry is validated
+  too. No risk score is invented when the provider fails.
+- **Verified:** 131 backend tests passed, including reproducing the exact null-choices error,
+  recovery through the real LLM client and forensic stage, and malformed token-retry output.
+- **Limit:** no provider payload or server traceback was available; null choices reproduce
+  the stored error, but the upstream reason for the incomplete response is unconfirmed.
+
 ## 2026-10-10: Recover from malformed forensic model responses
 
 - **Fixed:** invalid JSON or a missing, nonnumeric or out-of-range `risk_score` immediately

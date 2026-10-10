@@ -459,6 +459,60 @@ def test_chat_retries_with_more_tokens_when_cut_off():
     assert budgets == [2500, 5000]
 
 
+@pytest.mark.parametrize("bad", ["no_choices", "empty_choices", "no_message", "empty_text"])
+async def test_forensic_recovers_from_incomplete_provider_response(bad):
+    from types import SimpleNamespace
+
+    from aegis.core.config import Settings
+    from aegis.providers.llm import LLMClient
+
+    calls = []
+
+    async def create(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            if bad == "no_choices":
+                return SimpleNamespace(choices=None)
+            if bad == "empty_choices":
+                return SimpleNamespace(choices=[])
+            message = None if bad == "no_message" else SimpleNamespace(content=None)
+            return SimpleNamespace(choices=[SimpleNamespace(message=message, finish_reason="stop")])
+        return SimpleNamespace(choices=[SimpleNamespace(
+            message=SimpleNamespace(content='{"risk_score":0.1,"findings":[]}'),
+            finish_reason="stop")])
+
+    settings = Settings(featherless_api_key="test-key")
+    llm = LLMClient(settings)
+    llm._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    ctx = SimpleNamespace(email=parse_email("Lunch tomorrow?"), results={},
+                          provider_scores={}, llm=llm, settings=settings)
+    result = await forensic.run(ctx)
+    assert result.value.risk_score == 0.1
+    assert len(calls) == 2
+
+
+async def test_missing_choices_after_token_retry_is_bad_output():
+    from types import SimpleNamespace
+
+    from aegis.core.config import Settings
+    from aegis.providers.llm import LLMBadOutput, LLMClient
+
+    calls = []
+
+    async def create(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            return SimpleNamespace(choices=[SimpleNamespace(
+                message=SimpleNamespace(content='{'), finish_reason="length")])
+        return SimpleNamespace(choices=None)
+
+    llm = LLMClient(Settings(featherless_api_key="test-key"))
+    llm._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    with pytest.raises(LLMBadOutput, match="completion choices"):
+        await llm.chat_json("test", [])
+    assert len(calls) == 2
+
+
 def test_strip_code_from_subject():
     from aegis.services.claims import strip_code
     assert strip_code("Test AEGIS AEGIS-W5ZM4R") == "Test AEGIS"

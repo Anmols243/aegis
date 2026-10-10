@@ -56,6 +56,18 @@ def parse_json_object(text: str) -> dict:
     return data
 
 
+def _completion_choice(response):
+    """Validate the provider envelope before indexing it.
+
+    Missing or null choices are bad output, rather than an indexing error,
+    so stage recovery can retry them.
+    """
+    choices = getattr(response, "choices", None)
+    if not isinstance(choices, list) or not choices or choices[0] is None:
+        raise LLMBadOutput("provider returned no completion choices")
+    return choices[0]
+
+
 class LLMClient:
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -87,12 +99,18 @@ class LLMClient:
             kwargs["response_format"] = {"type": "json_object"}
         async with self._sem:
             resp = await client.chat.completions.create(**kwargs)
-            if resp.choices[0].finish_reason == "length":
+            choice = _completion_choice(resp)
+            if choice.finish_reason == "length":
                 # cut off by max_tokens (a reasoning model can spend most of it thinking):
                 # half an answer is useless, so try once more with double the budget
                 kwargs["max_tokens"] = max_tokens * 2
                 resp = await client.chat.completions.create(**kwargs)
-        return resp.choices[0].message.content or ""
+                choice = _completion_choice(resp)
+        message = getattr(choice, "message", None)
+        content = getattr(message, "content", None)
+        if not isinstance(content, str) or not content.strip():
+            raise LLMBadOutput("provider returned no completion text")
+        return content
 
     async def chat_json(self, model: str, messages: list[dict[str, Any]],
                         **kwargs) -> dict:
