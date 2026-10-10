@@ -89,7 +89,7 @@ export function EmailTestButton() {
   return (
     <Link
       href="/live"
-      title="Open the live test inbox"
+      title="Test the system with a real email"
       className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-lime/40 bg-surface/80 px-7 py-2 text-sm font-medium text-ink backdrop-blur transition-colors hover:border-lime hover:text-lime"
     >
       <Mail className="size-4 shrink-0 text-lime" aria-hidden="true" />
@@ -128,6 +128,7 @@ export function InboxCallout() {
       >
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       </button>
+      <span>and get the verdict by email</span>
     </div>
   )
 }

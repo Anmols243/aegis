@@ -171,6 +171,11 @@
     --m: rgba(217, 255, 61, 0.95);
     border-color: rgba(217, 255, 61, 0.22);
   }
+  /* Key panels (page heroes, the main form, the verdict): a soft lime light from the top-right
+     corner. A background layer, so it never tints the content. */
+  .hud-glow {
+    background-image: radial-gradient(32rem 18rem at 100% 0%, rgba(217, 255, 61, 0.075), transparent 70%);
+  }
 
   /* mono uppercase micro-label */
   .label-mono {

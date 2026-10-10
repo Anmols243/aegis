@@ -37,6 +37,14 @@ the sonar grid) is lime. Tailwind color utilities: `lime`, `scam`, `susp`,
 - `.hud`: panel with dark translucent fill, hairline border, 20px radius and
   lime viewfinder marks in each corner. Add `.hud-interactive` to brighten the
   marks and border on hover.
+- `.hud-glow`: soft lime light from a key panel's top-right corner (a background
+  layer, so content is never tinted). Used on page heroes and the Analyze form.
+- `PageHero` (`components/aegis/page-hero.tsx`): every page's header. A key panel
+  (BorderBeam + `.hud-glow`) with an eyebrow pill (section name and icon, or a
+  status badge), an optional mono note, a Montserrat title whose closing mark is
+  lime like the wordmark, a description and optional actions on the right
+  (`HERO_PRIMARY`, `HERO_SECONDARY`). Titles that quote an email subject turn the
+  accent off; pages whose verdict panel already has a beam turn the beam off.
 - `.chip`: filter pill, dark fill with a lime outline; `data-active="true"` is
   solid lime with black text.
 - `.evidence-mark`: inline highlight of quoted evidence in an email

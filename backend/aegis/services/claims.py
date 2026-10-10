@@ -18,6 +18,14 @@ from ..db.models import SenderLink, ViewerCode
 _ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"   # no 0/O, 1/I/L
 _ADDR_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 CODE_RE = re.compile(r"AEGIS-([A-Z2-9]{6})(?![A-Z0-9])", re.I)
+# the code plus brackets around it, removed from the subject shown in lists
+_CODE_IN_SUBJECT = re.compile(r"\s*[\[(]?\s*AEGIS-[A-Z2-9]{6}(?![A-Z0-9])\s*[\])]?", re.I)
+
+
+def strip_code(subject: str) -> str:
+    """The subject to display: without the routing code, which means nothing to a reader
+    (the stored email keeps it)."""
+    return re.sub(r"\s{2,}", " ", _CODE_IN_SUBJECT.sub(" ", subject or "")).strip()
 
 
 def _new_code() -> str:

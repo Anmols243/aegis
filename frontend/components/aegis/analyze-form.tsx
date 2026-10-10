@@ -63,7 +63,7 @@ export function AnalyzeForm() {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
       <BorderBeam className="min-w-0 self-start rounded-[1.25rem]" radius={20} duration={8}>
         <form
-          className="hud flex flex-col gap-4 p-5 sm:p-6"
+          className="hud hud-glow flex flex-col gap-4 p-5 sm:p-6"
           onSubmit={(e) => {
             e.preventDefault()
             void submit()

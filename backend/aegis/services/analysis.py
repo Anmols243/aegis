@@ -43,6 +43,11 @@ def default_visibility(source: str, settings: Settings | None = None) -> str:
     return "private"
 
 
+def _display_subject(source: str, subject: str) -> str:
+    """Test-inbox subjects lose the routing code (services/claims.py) for display."""
+    return claims.strip_code(subject) if source in ("webhook", "poller") else (subject or "")
+
+
 async def create(session, *, source: str, raw: str, raw_html: str = "",
                  provider_scores: dict | None = None, external_id: str | None = None,
                  inbox_id: str | None = None, needs_fetch: bool = False,
@@ -55,7 +60,7 @@ async def create(session, *, source: str, raw: str, raw_html: str = "",
     a = Analysis(id=new_id(), source=source, status="queued", raw=raw or "",
                  raw_html=raw_html or "", provider_scores=provider_scores or {},
                  external_id=external_id, inbox_id=inbox_id, needs_fetch=int(needs_fetch),
-                 subject=(preview.subject if preview else "")[:300],
+                 subject=_display_subject(source, preview.subject if preview else "")[:300],
                  sender=(preview.sender if preview else "")[:300],
                  share_token="s_" + secrets.token_urlsafe(16), result={},
                  visibility=default_visibility(source), owner_hash=owner_hash,
@@ -150,7 +155,7 @@ async def process(analysis_id: str, settings: Settings, llm: LLMClient,
         a = await s.get(Analysis, analysis_id)
         a.status, a.error = "done", None
         a.label, a.score, a.confidence = verdict.label, verdict.score, verdict.confidence
-        a.subject = (ctx.email.subject or a.subject)[:300]
+        a.subject = (_display_subject(source, ctx.email.subject) or a.subject)[:300]
         a.sender = (ctx.email.sender or a.sender)[:300]
         a.duration_s = round(time.monotonic() - started, 2)
         a.result = result
@@ -291,6 +296,16 @@ def purge_row(a: Analysis, settings: Settings) -> None:
     path = screenshot_path(settings, a.id)
     if os.path.exists(path):
         os.remove(path)
+
+
+async def unpublish_inbox_mail() -> int:
+    """Test-inbox mail made public while INBOX_PUBLIC was on goes back to private once it is
+    off: otherwise a tester's own address stays on everyone's campaign graph. Returns how many."""
+    async with session_scope() as s:
+        res = await s.execute(update(Analysis).where(
+            Analysis.source.in_(("webhook", "poller")), Analysis.visibility == "public",
+        ).values(visibility="private"))
+        return res.rowcount or 0
 
 
 async def delete_owned(owner_hash: str) -> int:

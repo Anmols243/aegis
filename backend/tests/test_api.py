@@ -245,6 +245,7 @@ def test_inbox_live_feed_is_per_browser(settings_env, fake_llm, no_network):
     assert live["enabled"] is True and live["address"] == "test@inbox.example"
     [item] = live["items"]                     # only the mail that carried A's code
     assert item["id"] == mine and item["status"] == "done" and item["stages"]
+    assert item["subject"] == "Verify"                     # the routing code is not shown
     assert item["sender"] == "sh***@gmail.com"
     assert "paypa1-secure.com" in item["preview"]           # evidence stays
     assert "0142" not in item["preview"] and "***42" in item["preview"]
@@ -273,6 +274,27 @@ def test_sender_linked_by_a_coded_email(settings_env, fake_llm, no_network):
         after = _deliver(c, "msg_4", "Plain subject", "Me <me@example.com>")
         assert c.get("/api/v1/inbox/live", headers=VIEWER_A).json()["items"] == []
         assert c.get(f"/api/v1/analyses/{after}").status_code == 200   # exists, owned by nobody
+
+
+def test_startup_unpublishes_inbox_mail(settings_env, fake_llm, no_network, tmp_path):
+    """Inbox mail left public from an INBOX_PUBLIC period goes private on the next start."""
+    import sqlite3
+
+    from fastapi.testclient import TestClient
+
+    from aegis.main import create_app
+    with TestClient(create_app()) as c:
+        ids = [c.post("/api/v1/analyses", json={"raw": f"Subject: t{i}\n\nHello there, friend."}).json()["id"]
+               for i in range(2)]
+    db = sqlite3.connect(tmp_path / "t.db")
+    db.execute("UPDATE analyses SET source = 'poller', visibility = 'public' WHERE id = ?", (ids[0],))
+    db.execute("UPDATE analyses SET source = 'sample', visibility = 'public' WHERE id = ?", (ids[1],))
+    db.commit()
+    with TestClient(create_app()):
+        pass
+    vis = dict(db.execute("SELECT id, visibility FROM analyses").fetchall())
+    db.close()
+    assert vis[ids[0]] == "private" and vis[ids[1]] == "public"
 
 
 def test_delete_history_erases_only_own(settings_env, fake_llm, no_network):

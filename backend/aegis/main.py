@@ -18,6 +18,7 @@ from .core.security import BodyLimitMiddleware, SecurityHeadersMiddleware, reset
 from .db.session import close_db, init_db
 from .providers.agentboxd import AgentBoxD
 from .providers.llm import LLMClient
+from .services.analysis import unpublish_inbox_mail
 from .workers.mailbox import MailboxPoller
 from .workers.poller import poll_forever
 from .workers.queue import Worker
@@ -29,6 +30,8 @@ log = get_logger("main")
 async def lifespan(app: FastAPI):
     s = get_settings()
     await init_db(s.database_url)
+    if not s.inbox_public and (n := await unpublish_inbox_mail()):
+        log.info("test-inbox mail made private again", extra={"count": n})
     reset_limits()
     llm, agentboxd = LLMClient(s), AgentBoxD(s)
     worker = Worker(s, llm, agentboxd)

@@ -49,7 +49,7 @@ export default function LandingPage() {
             href="/cases"
             className="inline-flex h-12 items-center rounded-full border border-hair bg-surface/80 px-7 text-sm font-medium text-ink backdrop-blur transition-colors hover:border-lime/40"
           >
-            Browse recent cases
+            Browse cases
           </Link>
           <EmailTestButton />
         </div>

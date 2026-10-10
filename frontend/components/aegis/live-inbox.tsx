@@ -2,10 +2,11 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowUpRight, Check, CheckCircle2, Copy, Loader2, Lock, Mail, MailOpen, Sparkles } from "lucide-react"
+import { ArrowUpRight, CheckCircle2, ChevronRight, Loader2, Lock, MailOpen, Send, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
 import { ErrorState, LoadingState, SeverityPill, VerdictBadge } from "@/components/aegis/bits"
+import { HERO_PRIMARY, HERO_SECONDARY, PageHero } from "@/components/aegis/page-hero"
 import { api, ApiError, STAGES, type LiveInbox, type LiveInboxDetail, type LiveInboxItem, type Stage } from "@/lib/api"
 import { LABEL_META, pct, seconds, timeAgo } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -13,11 +14,13 @@ import { cn } from "@/lib/utils"
 const POLL_MS = 2000
 const DETAIL_POLL_MS = 1500
 const MAIL_SUBJECT = "Test AEGIS"
-const MAIL_BODY = "Paste or forward a suspicious email here, then send. AEGIS replies with its verdict."
+const MAIL_BODY = "Paste a suspicious email below this line, then send.\n\n"
+const STEPS = ["Open your mail app", "Paste a suspicious email", "Send it and watch below"]
 
 /**
- * The live test inbox: one screen, no long scroll. A compact address bar on top, then the
- * inbox feed and the dissection side by side; each scrolls inside its own panel.
+ * The live test inbox: one screen, no long scroll. A "Test the system" hero on top whose
+ * buttons open a message with the address and this browser's code already filled in, then
+ * the inbox feed and the dissection side by side; each scrolls inside its own panel.
  */
 export function LiveInboxView() {
   const [data, setData] = React.useState<LiveInbox | null>(null)
@@ -64,10 +67,23 @@ export function LiveInboxView() {
     }
   }, [])
 
-  if (!data && error) return <ErrorState message={error} />
-  if (!data) return <LoadingState label="Connecting to the inbox" />
-  if (!data.enabled || !data.address) {
-    return <ErrorState message="The test inbox is not connected on this server. Set the AGENTBOXD_* variables in backend/.env and restart the backend." />
+  const address = data?.enabled ? data.address : null
+  const state: HeroState = !data ? (error ? "offline" : "connecting") : !address ? "offline" : error ? "reconnecting" : "listening"
+  const hero = <TestHero address={address} code={data?.code ?? null} state={state} />
+
+  if (!data || !address) {
+    return (
+      <div className="flex flex-col gap-4">
+        {hero}
+        {!data && error ? (
+          <ErrorState message={error} />
+        ) : !data ? (
+          <LoadingState label="Connecting to the inbox" />
+        ) : (
+          <ErrorState message="The test inbox is not connected on this server. Set the AGENTBOXD_* variables in backend/.env and restart the backend." />
+        )}
+      </div>
+    )
   }
 
   // The panel follows the newest email unless the visitor picked one.
@@ -77,8 +93,8 @@ export function LiveInboxView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <AddressBar address={data.address} code={data.code} offline={!!error} />
-      <div className="grid gap-4 lg:h-[calc(100dvh-17rem)] lg:min-h-[560px] lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+      {hero}
+      <div className="grid gap-4 lg:h-[calc(100dvh-19rem)] lg:min-h-[560px] lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <section aria-labelledby="feed-title" className="hud flex min-h-0 min-w-0 flex-col p-2">
           <div className="flex items-baseline justify-between gap-2 px-3 pb-2 pt-3">
             <h2 id="feed-title" className="label-mono text-ink/80">
@@ -119,77 +135,82 @@ export function LiveInboxView() {
   )
 }
 
-function AddressBar({ address, code, offline }: { address: string; code: string | null; offline: boolean }) {
-  const [copied, setCopied] = React.useState(false)
+type HeroState = "connecting" | "listening" | "reconnecting" | "offline"
+
+const STATE_PILL: Record<HeroState, { text: string; tone: string; dot: string }> = {
+  connecting: { text: "Connecting", tone: "border-hair text-muted-foreground", dot: "bg-muted-foreground [animation:aegis-pulse_1.2s_infinite]" },
+  listening: { text: "Listening", tone: "border-lime/30 text-lime", dot: "bg-lime shadow-[0_0_10px_var(--aegis-lime)] [animation:aegis-pulse_2s_infinite]" },
+  reconnecting: { text: "Reconnecting", tone: "border-scam/40 text-scam", dot: "bg-scam" },
+  offline: { text: "Offline", tone: "border-scam/40 text-scam", dot: "bg-scam" },
+}
+
+/** A new message to the test inbox, prefilled: the code in the subject routes the result to this browser. */
+function composeLinks(address: string, code: string | null) {
   const subject = code ? `${MAIL_SUBJECT} ${code}` : MAIL_SUBJECT
-  const mailto = `mailto:${address}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(MAIL_BODY)}`
-  const copy = (text: string, what: string) =>
-    navigator.clipboard.writeText(text).then(
-      () => {
-        setCopied(true)
-        toast.success(`${what} copied`)
-        window.setTimeout(() => setCopied(false), 1600)
-      },
-      () => toast.error("Could not copy"),
-    )
+  const q = (k: string, v: string) => `${k}=${encodeURIComponent(v)}`
+  return {
+    mailto: `mailto:${address}?${q("subject", subject)}&${q("body", MAIL_BODY)}`,
+    // Gmail web compose (tf=cm opens it); desktop only, mobile browsers land on the inbox
+    gmail: `https://mail.google.com/mail/u/0/?${q("to", address)}&${q("su", subject)}&${q("body", MAIL_BODY)}&tf=cm`,
+  }
+}
+
+/** The page header: what this is, how to use it, and one button that does the work. */
+function TestHero({ address, code, state }: { address: string | null; code: string | null; state: HeroState }) {
+  const links = address ? composeLinks(address, code) : null
+  const pill = STATE_PILL[state]
   return (
-    <section aria-label="Test inbox address" className="hud flex flex-col gap-3 px-4 py-3.5 sm:px-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <span
-          className={cn(
-            "inline-flex w-fit shrink-0 items-center gap-2 rounded-full border px-3 py-1 font-mono text-[10.5px] uppercase tracking-[0.14em]",
-            offline ? "border-scam/40 text-scam" : "border-lime/30 text-lime",
-          )}
-        >
-          <span
-            className={cn("size-1.5 rounded-full", offline ? "bg-scam" : "bg-lime shadow-[0_0_10px_var(--aegis-lime)] [animation:aegis-pulse_2s_infinite]")}
-            aria-hidden="true"
-          />
-          {offline ? "Reconnecting" : "Listening"}
+    <PageHero
+      title="Test the system"
+      badge={
+        <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[10.5px] uppercase tracking-[0.14em]", pill.tone)}>
+          <span className={cn("size-1.5 rounded-full", pill.dot)} aria-hidden="true" />
+          {pill.text}
         </span>
-        <code className="min-w-0 flex-1 break-words font-mono text-lg font-semibold text-ink sm:text-xl">
-          {address.split("@")[0]}
-          <wbr />@{address.split("@").slice(1).join("@")}
-        </code>
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            onClick={() => copy(address, "Address")}
-            className="inline-flex h-10 items-center gap-2 rounded-full bg-lime px-4 text-sm font-semibold text-black shadow-[0_0_20px_rgba(217,255,61,0.3)] transition-transform active:scale-[0.98]"
-          >
-            {copied ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
-            {copied ? "Copied" : "Copy"}
-          </button>
-          <a
-            href={mailto}
-            className="inline-flex h-10 items-center gap-2 rounded-full border border-hair bg-surface/80 px-4 text-sm font-medium text-ink transition-colors hover:border-lime/40"
-          >
-            <Mail className="size-4 text-lime" aria-hidden="true" />
-            Mail app
-          </a>
-        </div>
-      </div>
-      {code ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
-          <span>Put your code in the subject:</span>
-          <button
-            type="button"
-            onClick={() => copy(code, "Code")}
-            title="Copy your code"
-            className="inline-flex items-center gap-2 rounded-full border border-lime/40 bg-lime/[0.06] px-3 py-1 font-mono text-sm font-semibold tracking-[0.08em] text-lime hover:bg-lime/[0.12]"
-          >
-            {code}
-            <Copy className="size-3.5" aria-hidden="true" />
-          </button>
-          <span className="text-xs text-faint">Mail app adds it for you. Needed once per sender address.</span>
-        </div>
-      ) : null}
-      <p className="flex items-start gap-2 text-xs text-faint">
-        <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-        Only your mail shows up here, for this browser alone. Send one email with your code; after that, mail from the same address shows up
-        without it. Other mail is still answered by email but shown to nobody. Your cases are deleted after 24 hours, or right away from Cases.
-      </p>
-    </section>
+      }
+      note={
+        <>
+          <Lock className="size-3" aria-hidden="true" />
+          Private to this browser
+        </>
+      }
+      actions={
+        <>
+          <div className="flex flex-wrap gap-2">
+            {links ? (
+              <a href={links.mailto} className={HERO_PRIMARY} title="Opens a new message with the address and your private code filled in">
+                <Send className="size-4" aria-hidden="true" />
+                Send a test email
+              </a>
+            ) : (
+              <span aria-disabled="true" className={cn(HERO_PRIMARY, "pointer-events-none opacity-40 shadow-none")}>
+                <Send className="size-4" aria-hidden="true" />
+                Send a test email
+              </span>
+            )}
+            {links ? (
+              <a href={links.gmail} target="_blank" rel="noopener noreferrer" className={cn(HERO_SECONDARY, "hidden sm:inline-flex")}>
+                Gmail
+                <ArrowUpRight className="size-4 text-lime" aria-hidden="true" />
+              </a>
+            ) : null}
+          </div>
+          <p className="font-mono text-[10.5px] text-faint">Address and your private code come filled in.</p>
+        </>
+      }
+    >
+      <ol aria-label="How it works" className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2.5">
+        {STEPS.map((step, i) => (
+          <li key={step} className="flex items-center gap-2 text-sm">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-lime/40 font-mono text-[10px] font-bold text-lime">
+              {i + 1}
+            </span>
+            {step}
+            {i < STEPS.length - 1 ? <ChevronRight className="hidden size-3.5 text-faint sm:block" aria-hidden="true" /> : null}
+          </li>
+        ))}
+      </ol>
+    </PageHero>
   )
 }
 
@@ -202,7 +223,7 @@ function Waiting() {
         <MailOpen className="size-5 text-lime" aria-hidden="true" />
       </span>
       <p className="label-mono text-[12px] text-muted-foreground">Waiting for mail</p>
-      <p className="max-w-xs text-sm text-faint">Send an email to the address above with your code in the subject. It appears here the moment it lands.</p>
+      <p className="max-w-xs text-sm text-faint">Press Send a test email, paste a suspicious email and send. It appears here the moment it lands.</p>
     </div>
   )
 }

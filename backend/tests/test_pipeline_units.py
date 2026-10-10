@@ -329,3 +329,12 @@ def test_chat_retries_with_more_tokens_when_cut_off():
     llm._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
     assert asyncio.run(llm.chat_json("m", [], max_tokens=2500)) == {"ok": True}
     assert budgets == [2500, 5000]
+
+
+def test_strip_code_from_subject():
+    from aegis.services.claims import strip_code
+    assert strip_code("Test AEGIS AEGIS-W5ZM4R") == "Test AEGIS"
+    assert strip_code("sda [aegis-w5zm4r]") == "sda"
+    assert strip_code("(AEGIS-W5ZM4R) Fwd: invoice") == "Fwd: invoice"
+    assert strip_code("AEGIS-W5ZM4R") == ""
+    assert strip_code("AEGIS-W5ZM4RX is not a code") == "AEGIS-W5ZM4RX is not a code"

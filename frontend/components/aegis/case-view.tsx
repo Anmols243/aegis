@@ -2,9 +2,10 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, FileSearch } from "lucide-react"
 
 import { ErrorState, LoadingState } from "@/components/aegis/bits"
+import { HERO_SECONDARY, PageHero } from "@/components/aegis/page-hero"
 import { PipelineView } from "@/components/aegis/pipeline-view"
 import { useLiveAnalysis } from "@/components/aegis/use-live-analysis"
 import { VerdictReport } from "@/components/aegis/verdict-report"
@@ -13,22 +14,28 @@ import { timeAgo } from "@/lib/format"
 export function CaseView({ id }: { id: string }) {
   const { analysis, stages, phase, error, retry } = useLiveAnalysis(id)
 
+  // The verdict panel below carries the moving streak, so this header goes without one.
   const header = (
-    <div className="mb-6 flex flex-col gap-3">
-      <Link href="/cases" className="inline-flex w-fit items-center gap-1.5 font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground hover:text-lime">
-        <ArrowLeft className="size-3.5" /> All cases
-      </Link>
+    <PageHero
+      className="mb-6"
+      label="Case"
+      icon={FileSearch}
+      title={analysis ? analysis.subject || analysis.email?.subject || "(no subject)" : "Case"}
+      accent={!analysis}
+      beam={false}
+      actions={
+        <Link href="/cases" className={HERO_SECONDARY}>
+          <ArrowLeft className="size-4 text-lime" aria-hidden="true" />
+          All cases
+        </Link>
+      }
+    >
       {analysis ? (
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-            <span className="break-words">{analysis.subject || analysis.email?.subject || "(no subject)"}</span>
-          </h1>
-          <p className="mt-1 break-words font-mono text-xs text-muted-foreground">
-            {analysis.sender || analysis.email?.from || "unknown sender"} · {timeAgo(analysis.created_at)} · {analysis.source} · {analysis.id}
-          </p>
-        </div>
+        <span className="break-words font-mono text-xs">
+          {analysis.sender || analysis.email?.from || "unknown sender"} · {timeAgo(analysis.created_at)} · {analysis.source} · {analysis.id}
+        </span>
       ) : null}
-    </div>
+    </PageHero>
   )
 
   if (phase === "loading") {

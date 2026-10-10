@@ -28,8 +28,8 @@ export function VerdictReport({ analysis, mode = "full" }: { analysis: Analysis;
         <p role="note" className="flex items-start gap-2.5 rounded-2xl border border-hair bg-surface/80 px-4 py-3 text-sm text-muted-foreground">
           <Lock className="mt-0.5 size-4 shrink-0 text-lime" aria-hidden="true" />
           <span>
-            <strong className="font-semibold text-ink">Private:</strong> only people with this link can see it. It never appears in the public feed or
-            the campaign graph.{a.mailbox_id ? " It came from your connected mailbox." : ""}
+            <strong className="font-semibold text-ink">Private:</strong> only people with this link can see it. It is never listed for anyone else or
+            shown in their campaign graph.{a.mailbox_id ? " It came from your connected mailbox." : ""}
           </span>
         </p>
       ) : null}

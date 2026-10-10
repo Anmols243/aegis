@@ -2,6 +2,27 @@
 
 Newest first.
 
+## 2026-10-10: Live "Test the system" hero, one page hero site-wide, copy refresh
+
+- **Changed (Live):** the address bar (address, Copy, code chip, two lines of rules) is replaced by a
+  "Test the system" hero: status, three steps, and "Send a test email", which opens the mail app
+  with the address, subject code and a body line filled in. A Gmail button opens Gmail's web
+  compose (`mail.google.com/mail/u/0/?to&su&body&tf=cm`, desktop only: mobile browsers open the
+  inbox instead). The panels now end 2rem above the viewport edge.
+- **Added:** `PageHero` and `.hud-glow` (brand.md), used for the header of Analyze, Cases,
+  Campaigns, Red Team, Privacy, Live, case detail and the shared verdict.
+- **Changed (backend):** the stored `subject` of inbox mail drops the routing code, so lists read
+  "sda", not "sda AEGIS-W5ZM4R"; the email keeps it.
+- **Fixed (privacy):** one Oct 8 inbox row was still public, which put a tester's own address on
+  everyone's Campaigns page. On start without `INBOX_PUBLIC`, public inbox rows go private.
+- **Copy:** Cases no longer says cases are "deleted after 24 hours" (only email text is); Privacy
+  lists "Delete my history"; home says "Browse cases" and that forwarded mail gets its verdict by
+  email; the verdict note no longer mentions a public feed; README and ARCHITECTURE match.
+- **Verified:** 106 backend tests (new: code stripped from subjects, startup un-publish);
+  `tsc`, `lint`, `next build` clean; screenshots of all eight pages at 1440x900, Live at 1024 and
+  390, Cases and a case at 390; no horizontal scroll anywhere; the anonymous campaigns API no longer
+  contains the address. Not tested: clicking the Gmail button in a signed-in browser.
+
 ## 2026-10-10: Forensic stage failing on cut-off model replies
 
 - **Fixed:** a reply stopped by `max_tokens` (Kimi-K3 can spend the budget reasoning) failed the

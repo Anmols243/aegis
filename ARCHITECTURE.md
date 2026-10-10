@@ -115,7 +115,18 @@ as shared infrastructure. Red-team variants stay out of the graph.
   inbox-forwarded mail is private: never listed except to its owner, opened only by its unguessable
   id (64-bit random) or share link. Campaign grouping still uses private mail (better threat intel),
   but other viewers see only `{"private": true, strength, why}` for it and a `hidden_count`.
-  The stored campaign note never quotes another email's subject.
+  The stored campaign note never quotes another email's subject. Test-inbox mail is public only
+  while `INBOX_PUBLIC=true`; on a start without it, such rows are made private again, so a
+  tester's own address never stays on everyone's campaign graph.
+- **Test-inbox ownership** (`services/claims.py`). Everyone mails one AgentBoxD address, so each
+  viewer gets a code (`AEGIS-XXXXXX`, table `viewer_codes`) that `/live` puts in the subject of a
+  prefilled message. Mail carrying it is owned by that viewer, and the SHA-256 of its lower-cased
+  sender address is linked to the viewer (`sender_links`), so later mail from that address needs
+  no code. Mail with neither is analyzed and replied to but owned by nobody, so listed nowhere.
+  `/inbox/live` returns only the viewer's own mail; the stored `subject` drops the code. A forged
+  From header can push mail into a linked viewer's list, never read from it.
+- **Delete my history** (`DELETE /api/v1/history`). Hard-deletes every analysis the viewer owns
+  (rows, stage runs, entities, screenshots) and its sender links.
 - **Mailboxes** (`services/mailboxes.py`, `workers/mailbox.py`). Only Sign in with Google and Sign
   in with Microsoft; IMAP and app passwords were removed (DECISIONS D11). Only the refresh token is
   stored, encrypted with AES-256-GCM (`core/crypto.py`), associated data = mailbox id; access tokens
@@ -151,13 +162,14 @@ as shared infrastructure. Red-team variants stay out of the graph.
   started (never to the confirming browser). Cancel revokes the token (Google). The starting window
   polls `/oauth/status` and updates by itself.
 - **Retention** (`services/analysis.py: purge_expired`, hourly). Private analyses older than their
-  retention (mailbox setting, else `PRIVATE_RETENTION_DAYS`) lose raw message, body, quoted evidence,
+  retention (mailbox setting, else `PRIVATE_RETENTION_DAYS`, default 1) lose raw message, body, quoted evidence,
   entities of legitimate mail, link details, AI summary, reply card and screenshot; the verdict stays.
 
 ## Storage
 
 One SQLite file (`DATABASE_URL`), WAL mode: `analyses` (also the job queue), `stage_runs`,
-`entities`, `redteam_runs`, `audit_events`. Screenshots in `DATA_DIR/screenshots/`.
+`entities`, `redteam_runs`, `viewer_codes`, `sender_links`, `audit_events`. Screenshots in
+`DATA_DIR/screenshots/`.
 
 ## Known limits
 

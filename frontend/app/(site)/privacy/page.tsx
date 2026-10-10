@@ -1,5 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { ShieldCheck } from "lucide-react"
+
+import { PageHero } from "@/components/aegis/page-hero"
 
 export const metadata: Metadata = { title: "Privacy" }
 
@@ -97,7 +100,13 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     title: "How to delete your data",
     body: (
       <ul className="flex list-disc flex-col gap-1.5 pl-5">
-        <li>Email text is deleted automatically after the retention period.</li>
+        <li>Email text is deleted automatically after the retention period (24 hours by default).</li>
+        <li>
+          <Link href="/cases" className="text-lime underline-offset-4 hover:underline">
+            Delete my history
+          </Link>{" "}
+          on the Cases page erases everything this browser analyzed, pasted or emailed, right away, and forgets which sender address belongs to it.
+        </li>
       </ul>
     ),
   },
@@ -105,13 +114,11 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
 
 export default function PrivacyPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-      <p className="label-mono mb-2 text-lime">Privacy</p>
-      <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">Your email is yours</h1>
-      <p className="mt-3 text-muted-foreground">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+      <PageHero label="Privacy" icon={ShieldCheck} note="No accounts. No tracking." title="Your email is yours">
         A scam checker has to read email to do its job. This page says plainly what AEGIS keeps, what it shares, and how to make it forget.
-      </p>
-      <div className="mt-10 flex flex-col gap-4">
+      </PageHero>
+      <div className="mt-6 flex flex-col gap-4">
         {SECTIONS.map((s) => (
           <section key={s.title} className="hud p-5 sm:p-6">
             <h2 className="mb-3 font-display text-lg font-bold tracking-tight text-ink">{s.title}</h2>
