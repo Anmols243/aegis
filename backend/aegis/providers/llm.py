@@ -26,17 +26,29 @@ class LLMBadOutput(ValueError):
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 
 
+# `\'` is not a JSON escape, but models write it (`PayPal\'s`); a preceding backslash pair
+# is a literal backslash and is left alone
+_BAD_APOSTROPHE = re.compile(r"(?<!\\)((?:\\\\)*)\\'")
+
+
+def _loads(t: str):
+    try:
+        return json.loads(t)
+    except json.JSONDecodeError:
+        return json.loads(_BAD_APOSTROPHE.sub(lambda m: m.group(1) + "'", t))
+
+
 def parse_json_object(text: str) -> dict:
     """Pull one JSON object out of a model reply. Raises LLMBadOutput."""
     t = _FENCE.sub("", (text or "").strip())
     try:
-        data = json.loads(t)
+        data = _loads(t)
     except json.JSONDecodeError:
         start, end = t.find("{"), t.rfind("}")
         if start == -1 or end <= start:
             raise LLMBadOutput(f"no JSON object in model output: {t[:200]!r}") from None
         try:
-            data = json.loads(t[start:end + 1])
+            data = _loads(t[start:end + 1])
         except json.JSONDecodeError as e:
             raise LLMBadOutput(f"invalid JSON in model output: {t[:200]!r}") from e
     if not isinstance(data, dict):
@@ -75,6 +87,11 @@ class LLMClient:
             kwargs["response_format"] = {"type": "json_object"}
         async with self._sem:
             resp = await client.chat.completions.create(**kwargs)
+            if resp.choices[0].finish_reason == "length":
+                # cut off by max_tokens (a reasoning model can spend most of it thinking):
+                # half an answer is useless, so try once more with double the budget
+                kwargs["max_tokens"] = max_tokens * 2
+                resp = await client.chat.completions.create(**kwargs)
         return resp.choices[0].message.content or ""
 
     async def chat_json(self, model: str, messages: list[dict[str, Any]],

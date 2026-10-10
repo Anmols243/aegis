@@ -298,3 +298,34 @@ def test_sandbox_classify_html_is_linear(page):
     t = time.perf_counter()
     classify_html(html, "https://x.test/")
     assert time.perf_counter() - t < 2.0
+
+
+def test_parse_json_accepts_escaped_apostrophe():
+    # models write `PayPal\'s`, which strict JSON rejects
+    from aegis.providers.llm import parse_json_object
+    reply = r'{"claim": "not PayPal\'s domain"}'
+    assert parse_json_object(reply) == {"claim": "not PayPal's domain"}
+
+
+def test_chat_retries_with_more_tokens_when_cut_off():
+    """A reply stopped by max_tokens (a reasoning model can spend it all thinking) is retried
+    once with double the budget instead of failing on half a JSON object."""
+    import asyncio
+    from types import SimpleNamespace
+
+    from aegis.core.config import Settings
+    from aegis.providers.llm import LLMClient
+
+    budgets = []
+
+    async def create(**kw):
+        budgets.append(kw["max_tokens"])
+        cut = len(budgets) == 1
+        msg = SimpleNamespace(content='{"findings": [{"claim": "x' if cut else '{"ok": true}')
+        return SimpleNamespace(choices=[SimpleNamespace(
+            message=msg, finish_reason="length" if cut else "stop")])
+
+    llm = LLMClient(Settings(featherless_api_key="k"))
+    llm._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    assert asyncio.run(llm.chat_json("m", [], max_tokens=2500)) == {"ok": True}
+    assert budgets == [2500, 5000]

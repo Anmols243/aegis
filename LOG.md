@@ -2,6 +2,15 @@
 
 Newest first.
 
+## 2026-10-10: Forensic stage failing on cut-off model replies
+
+- **Fixed:** a reply stopped by `max_tokens` (Kimi-K3 can spend the budget reasoning) failed the
+  stage with "no JSON object in model output". `LLMClient.chat` now retries once with double the
+  budget when `finish_reason` is `length`. Also seen in the same reply: `PayPal\'s`, an escape
+  strict JSON rejects; `parse_json_object` now accepts it (a literal backslash pair is left alone).
+- **Verified:** 104 backend tests (new: apostrophe escape, retry on cut-off); edge cases with real
+  backslashes parse unchanged. Seen once in 16 forensic runs; not reproduced live.
+
 ## 2026-10-10: Sender linking for test-inbox mail (D14)
 
 - **Why:** hand-written mail (not sent via the Mail app button) lacked the code, so it was fetched
