@@ -19,10 +19,10 @@ from dataclasses import asdict, dataclass, field
 
 from .context import PipelineContext, StageResult
 
-WEIGHTS = {"forensic": 0.35, "signals": 0.20, "sandbox": 0.15, "vision": 0.15,
-           "agentboxd": 0.15}
-THRESHOLD_SCAM = 0.70
-THRESHOLD_SUSPICIOUS = 0.40
+WEIGHTS = {"forensic": 0.25, "signals": 0.35, "sandbox": 0.15, "vision": 0.15,
+           "agentboxd": 0.10}
+THRESHOLD_SCAM = 0.65
+THRESHOLD_SUSPICIOUS = 0.35
 
 
 @dataclass
