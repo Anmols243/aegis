@@ -185,6 +185,28 @@ export interface PublicConfig {
   features: Record<string, boolean>
 }
 
+export interface Mailbox {
+  id: string
+  provider: string
+  email: string
+  host: string
+  status: "active" | "paused" | "error" | string
+  last_checked_at: string | null
+  last_error: string | null
+  created_at: string | null
+  scanned: number
+  flagged: number
+  label_mode: string
+  retention_days: number
+  manage_url: string | null
+}
+
+export interface OAuthStart {
+  url: string
+  state: string
+  pair: string
+}
+
 export interface LiveInboxItem {
   /** Opaque, stable row key (not the analysis id). */
   key: string
@@ -390,12 +412,51 @@ export const api = {
     request<Paged<AnalysisSummary>>(
       `/analyses${qs({ limit: p.limit ?? 20, cursor: p.cursor, label: p.label, q: p.q, mine: p.mine ? "true" : null })}`,
     ),
+
+      deleteHistory: () => request<{ deleted: number }>("/history", { method: "DELETE" }),
   /** Erase every case this browser analyzed (pasted and emailed). */
-  deleteHistory: () => request<{ deleted: number }>("/history", { method: "DELETE" }),
-  analysis: (id: string) => request<Analysis>(`/analyses/${encodeURIComponent(id)}`),
+    analysis: (id: string) => request<Analysis>(`/analyses/${encodeURIComponent(id)}`),
   abuseReport: (id: string) => request<{ markdown: string }>(`/analyses/${encodeURIComponent(id)}/abuse-report`),
   share: (token: string) => request<Analysis>(`/share/${encodeURIComponent(token)}`),
   eventsUrl: (id: string) => `${BASE}/analyses/${encodeURIComponent(id)}/events`,
+
+  mailboxProviders: () =>
+    request<{ id: string; name: string; covers: string; supported: boolean }[]>(
+      "/mailbox-providers",
+    ),
+
+  startOAuth: (provider: string, retentionDays = 7) =>
+    request<OAuthStart>(`/oauth/${encodeURIComponent(provider)}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ retention_days: retentionDays }),
+    }),
+
+  listMailboxes: () => request<Mailbox[]>("/mailboxes"),
+
+  checkMailbox: (mailboxId: string) =>
+    request<{ ok: boolean }>(
+      `/mailboxes/${encodeURIComponent(mailboxId)}/check`,
+      { method: "POST" },
+    ),
+
+  pauseMailbox: (mailboxId: string) =>
+    request<Mailbox>(
+      `/mailboxes/${encodeURIComponent(mailboxId)}/pause`,
+      { method: "POST" },
+    ),
+
+  resumeMailbox: (mailboxId: string) =>
+    request<Mailbox>(
+      `/mailboxes/${encodeURIComponent(mailboxId)}/resume`,
+      { method: "POST" },
+    ),
+
+  removeMailbox: (mailboxId: string, purge = false) =>
+    request<void>(
+      `/mailboxes/${encodeURIComponent(mailboxId)}?purge=${purge}`,
+      { method: "DELETE" },
+    ),
 
   campaigns: () => request<CampaignsResponse>("/campaigns"),
 
