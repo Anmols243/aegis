@@ -123,8 +123,10 @@ async def run(ctx: PipelineContext) -> StageResult:
             break
         except ValueError as exc:
             if attempt == 1:
-                raise ValueError("forensic model returned invalid JSON or risk_score "
-                                 "after two attempts") from exc
+                # Parser errors append model text after a colon. Retain the
+                # failure category without exposing that text in the case API.
+                reason = str(exc).split(":", 1)[0][:120]
+                raise ValueError(f"{reason}; forensic retry exhausted after two attempts") from exc
             # Reassess the original artifact. Do not feed malformed model output
             # back as instructions, invent a score, or skip evidence validation.
             messages[0] = {"role": "system", "content": SYSTEM + "\n\n"

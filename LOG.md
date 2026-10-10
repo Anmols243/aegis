@@ -2,6 +2,17 @@
 
 Newest first.
 
+## 2026-10-10: Live forensic failure persists after retries
+
+- **Observed:** case `a_1a124b080c5be5486d0a407627f` and a new harmless lunch-message
+  analysis `a_1a124b36d184d95e0da7108c4ab` both failed after two forensic attempts.
+  The generic retry-exhausted error hid the underlying failure category.
+- **Changed:** the final forensic error retains the validation or provider failure category,
+  stripping model-output excerpts appended to parser errors. The missing-score regression
+  verifies that the category reaches the stage result.
+- **Verified:** 131 backend tests passed. The live inference failure is still unresolved;
+  this change provides diagnostics rather than claiming the provider issue is fixed.
+
 ## 2026-10-10: Recover from missing provider completion choices
 
 - **Observed:** deployed case `a_1a124a7f818ca85c9e8050cff44` failed forensic analysis with

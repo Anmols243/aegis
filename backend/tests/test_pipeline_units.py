@@ -195,6 +195,7 @@ async def test_forensic_stops_after_two_invalid_outputs_and_fails_closed():
     stage = next(stage for stage in STAGES if stage.name == "forensic")
     outcome = await _execute(stage, ctx)
     assert outcome["status"] == "failed"
+    assert "risk_score is not numeric" in outcome["error"]
     assert len(calls) == 2
     assert "forensic" not in ctx.results
     assert arbiter.arbitrate(*arbiter.gather(ctx)).label == "SUSPICIOUS"
