@@ -28,12 +28,17 @@ Return ONLY a JSON object:
     {"claim": "one sentence", "severity": "high|medium|low",
      "evidence": {"artifact": "header|subject|body|url|attachment", "excerpt": "exact quote"}}
   ],
-  "deception_techniques": [one or more of: """ + ", ".join(TECHNIQUES) + """],
-  "risk_score": 0.0 to 1.0,
+  "deception_techniques": [],
+  "risk_score": 0.5,
   "summary": "two plain-language sentences a non-technical person understands"
 }
 
 Rules:
+- The object above shows the format only. Choose risk_score from the evidence:
+  it is REQUIRED and must be a JSON number from 0.0 through 1.0, not null,
+  a percentage, a label or an object.
+- deception_techniques contains only these names, or is empty:
+  """ + ", ".join(TECHNIQUES) + """.
 - EVERY finding needs an exact, verbatim excerpt copied from the email. Quotes are
   checked automatically; a paraphrased or invented quote is discarded.
 - risk_score: your estimate that the email is malicious. Legitimate mail (receipts,
@@ -106,11 +111,28 @@ async def run(ctx: PipelineContext) -> StageResult:
              "requested_action": triage.requested_action}))
     if ctx.provider_scores:
         context.append(f"INBOX PROVIDER SCORES (AgentBoxD): {json.dumps(ctx.provider_scores)}")
-    data = await ctx.llm.chat_json(ctx.settings.model_forensic, [
+    messages = [
         {"role": "system", "content": SYSTEM},
         {"role": "user", "content": "\n\n".join(context)},
-    ], max_tokens=2500)
-    report = parse_report(data, e.sources())
+    ]
+    for attempt in range(2):
+        try:
+            data = await ctx.llm.chat_json(ctx.settings.model_forensic, messages,
+                                           max_tokens=2500)
+            report = parse_report(data, e.sources())
+            break
+        except ValueError as exc:
+            if attempt == 1:
+                raise ValueError("forensic model returned invalid JSON or risk_score "
+                                 "after two attempts") from exc
+            # Reassess the original artifact. Do not feed malformed model output
+            # back as instructions, invent a score, or skip evidence validation.
+            messages[0] = {"role": "system", "content": SYSTEM + "\n\n"
+                           "Your previous response failed validation. Return a complete "
+                           "JSON object with a required numeric risk_score between 0 and 1. "
+                           "Reassess the email and quote only evidence it contains."}
     note = f", {report.dropped} ungrounded dropped" if report.dropped else ""
+    if attempt:
+        note += ", recovered after one retry"
     return StageResult(report, f"{len(report.findings)} grounded finding(s), "
                                f"risk {report.risk_score:.2f}{note}")

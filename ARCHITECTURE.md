@@ -70,7 +70,9 @@ then missing and the arbiter compensates.
   impersonation at 0.7 or more, AgentBoxD phishing 0.85 or more), the label is SCAM. A dead phishing
   domain (sandbox "unreachable") cannot drag a doubly-confirmed scam down to SUSPICIOUS.
 - **Fail closed:** without the forensic analyst, never LIKELY SAFE. A missing model risk score
-  fails validation. One strong source sets a SUSPICIOUS minimum even when the mean is lower.
+  fails validation. The forensic stage retries invalid JSON or scores once with explicit format
+  instructions and validates the replacement, including evidence grounding. Two invalid replies
+  leave the stage failed. One strong source sets a SUSPICIOUS minimum even when the mean is lower.
 - **Microsoft billing:** legitimate Microsoft subdomains and Azure portal links do not count as
   sender spoofing merely because their hostnames differ. This does not clear the email by itself.
   The sandbox does not classify a password form on the exact HTTPS Microsoft sign-in hosts as

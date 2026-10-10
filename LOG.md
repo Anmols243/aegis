@@ -2,6 +2,18 @@
 
 Newest first.
 
+## 2026-10-10: Recover from malformed forensic model responses
+
+- **Fixed:** invalid JSON or a missing, nonnumeric or out-of-range `risk_score` immediately
+  failed the forensic stage. It now retries once with explicit format instructions and
+  revalidates the score and quoted evidence. A second invalid response still fails closed.
+- **Changed:** the forensic prompt uses valid JSON as its format example and explicitly requires
+  a numeric score from 0 to 1. Recovered responses are identified in the stage summary.
+- **Verified:** 126 backend tests passed. New regressions cover recovery from four malformed
+  response shapes, grounding after recovery, and failure after two invalid replies.
+- **Limit:** the original live model response was not available; recovery was checked with
+  controlled model responses through the real forensic stage and runner.
+
 ## 2026-10-10: Azure invoice false positives and unsafe verdict averaging
 
 - **Fixed:** legitimate Microsoft sender subdomains and Microsoft-to-Azure portal links triggered
