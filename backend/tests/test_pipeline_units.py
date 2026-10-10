@@ -88,6 +88,37 @@ def test_legit_domain_not_flagged():
     assert not rep.high
 
 
+def test_azure_invoice_uses_microsoft_domain_family():
+    from aegis.pipeline.triage import deterministic
+
+    email = parse_email(
+        "From: Microsoft Azure <microsoft-noreply@billing.microsoft.com>\n"
+        "Subject: Your Azure invoice is ready\n\n"
+        "View your invoice in the Azure portal: https://portal.azure.com/#view/billing\n"
+        "Manage your account: https://account.microsoft.com/\n")
+    triage = deterministic(email)
+    report = signals.analyze_signals(email.text, email.headers, email.html, triage.__dict__)
+    assert report.signals == []
+    verdict = arbiter.arbitrate({"forensic": 0.05, "signals": report.risk}, strong=[])
+    assert verdict.label == "LIKELY_SAFE"
+
+
+@pytest.mark.parametrize("domain", ["microsoft.com.attacker.test", "evil-microsoft.com",
+                                    "microsoft-login.test"])
+def test_microsoft_lookalikes_are_still_flagged(domain):
+    report = signals.analyze_signals(triage=_triage(
+        sender=f"Microsoft Azure <billing@{domain}>", domains=[domain]))
+    assert "display-name-spoof" in {s.name for s in report.high}
+
+
+def test_microsoft_sender_with_external_invoice_link_is_flagged():
+    report = signals.analyze_signals(triage=_triage(
+        sender="Microsoft <microsoft-noreply@microsoft.com>",
+        urls=["https://microsoft-billing.attacker.test/pay"],
+        domains=["microsoft-billing.attacker.test"]))
+    assert "sender-link-domain-mismatch" in {s.name for s in report.signals}
+
+
 # --------------------------------------------------------------------------- grounding
 
 def test_grounding_is_case_and_whitespace_insensitive():
@@ -131,6 +162,25 @@ def test_arbiter_single_strong_source_is_not_enough():
     v = arbiter.arbitrate({"forensic": 0.9, "signals": 0.0},
                           strong=["forensic analyst: risk 0.90"])
     assert v.label == "SUSPICIOUS"
+
+
+@pytest.mark.parametrize("risks,strong", [
+    ({"forensic": 0.95, "signals": 0.0, "vision": 0.0, "sandbox": 0.1},
+     ["forensic analyst: risk 0.95"]),
+    ({"forensic": 0.05, "signals": 0.6, "vision": 0.0, "sandbox": 0.1},
+     ["deterministic signal: gift-card-request"]),
+    ({"forensic": 0.05, "signals": 0.0, "sandbox": 1.0},
+     ["link sandbox: credential-harvest page"]),
+])
+def test_arbiter_never_clears_a_strong_risk_as_safe(risks, strong):
+    verdict = arbiter.arbitrate(risks, strong)
+    assert verdict.label == "SUSPICIOUS"
+    assert any("strong evidence" in note for note in verdict.dissent)
+
+
+def test_forensic_missing_risk_does_not_default_to_safe():
+    with pytest.raises(ValueError):
+        forensic.parse_report({"findings": [], "summary": "Could not assess"}, ("x",))
 
 
 def test_arbiter_fails_closed_without_forensic():
@@ -285,6 +335,29 @@ def test_sandbox_classify_html():
         == "malware-drop"
     benign = classify_html('<a href="/doc.zip?x=1">y</a><abbr>.exe</abbr>', "https://x.test/")
     assert benign["kind"] == "benign" and not benign["has_login_form"]
+
+
+@pytest.mark.parametrize("host", ["login.microsoftonline.com", "login.live.com"])
+def test_microsoft_signin_page_is_not_credential_theft(host):
+    from aegis.pipeline.sandbox import classify_html
+
+    result = classify_html('<form action="/login"><input type="password"></form>',
+                           f"https://{host}/login")
+    assert result["has_password_form"]
+    assert result["kind"] == "benign"
+
+
+@pytest.mark.parametrize("url,action", [
+    ("https://login.microsoftonline.com.attacker.test/login", "/login"),
+    ("http://login.microsoftonline.com/login", "/login"),
+    ("https://login.microsoftonline.com/login", "https://attacker.test/steal"),
+    ("https://tenant.onmicrosoft.com/login", "/login"),
+])
+def test_untrusted_signin_destinations_remain_credential_harvest(url, action):
+    from aegis.pipeline.sandbox import classify_html
+
+    result = classify_html(f'<form action="{action}"><input type="password"></form>', url)
+    assert result["kind"] == "credential-harvest"
 
 
 @pytest.mark.parametrize("page", ["<form>", "<input ", "<a ", "<a href=x", "<title>"])

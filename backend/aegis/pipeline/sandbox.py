@@ -17,6 +17,7 @@ SSRF defence (every URL in an email is attacker-controlled):
 from __future__ import annotations
 
 import asyncio
+import html as html_lib
 import ipaddress
 import re
 import socket
@@ -112,6 +113,21 @@ class LinkVerdict:
 _TAG = re.compile(r"<(input|form|a)\b([^<>]*)")   # stops at the next < or >: linear
 _HREF = re.compile(r"href=[\"']?([^\"'\s]*)")
 _LOGIN_WORDS = re.compile(r"log\s?in|sign[\s-]?in|password|verify")
+_FORM_ACTION = re.compile(r'''\baction\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))''')
+_MICROSOFT_LOGIN_HOSTS = {"login.microsoftonline.com", "login.live.com"}
+
+
+def _microsoft_login_url(url: str) -> bool:
+    """A known HTTPS login endpoint is not itself credential theft.
+
+    This says nothing about the email, tenant or app requesting access.
+    """
+    try:
+        p = urlsplit(url)
+        return (p.scheme == "https" and p.hostname in _MICROSOFT_LOGIN_HOSTS
+                and p.port in (None, 443) and not p.username and not p.password)
+    except ValueError:
+        return False
 
 
 def classify_html(html: str, final_url: str) -> dict:
@@ -119,6 +135,7 @@ def classify_html(html: str, final_url: str) -> dict:
     # since this runs on the event loop (a backtracking regex would stall the server).
     low = html.lower()
     has_password, first_form_end, download = False, -1, False
+    login_targets = _microsoft_login_url(final_url)
     for m in _TAG.finditer(low):
         tag, attrs = m.group(1), m.group(2)
         if tag == "input":
@@ -126,6 +143,10 @@ def classify_html(html: str, final_url: str) -> dict:
         elif tag == "form":
             if first_form_end < 0:
                 first_form_end = m.end()
+            action = _FORM_ACTION.search(attrs)
+            target = next((v for v in action.groups() if v is not None), "") if action else ""
+            login_targets = login_targets and _microsoft_login_url(
+                urljoin(final_url, html_lib.unescape(target)))
         elif not download:
             download = any(v.endswith(_MALWARE_EXTS) for v in _HREF.findall(attrs))
     has_login = has_password or (first_form_end >= 0
@@ -139,7 +160,7 @@ def classify_html(html: str, final_url: str) -> dict:
             src = html if len(html) == len(low) else low
             title = re.sub(r"\s+", " ", src[gt + 1:end]).strip()[:160]
     path = urlsplit(final_url).path.lower()
-    if has_password:
+    if has_password and not login_targets:
         kind = "credential-harvest"
     elif path.endswith(_MALWARE_EXTS) or download:
         kind = "malware-drop"

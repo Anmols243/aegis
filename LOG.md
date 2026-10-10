@@ -2,6 +2,21 @@
 
 Newest first.
 
+## 2026-10-10: Azure invoice false positives and unsafe verdict averaging
+
+- **Fixed:** legitimate Microsoft sender subdomains and Microsoft-to-Azure portal links triggered
+  spoofing and sender-link mismatch signals. Domain matching now respects label boundaries and
+  the Microsoft service family; lookalikes and external invoice links remain flagged.
+- **Fixed:** a single strong fraud source could be averaged down to LIKELY_SAFE by quiet stages.
+  It now sets a SUSPICIOUS minimum; two corroborating sources still produce SCAM. A missing
+  forensic risk score fails validation instead of defaulting to zero.
+- **Fixed:** password forms on exact HTTPS `login.microsoftonline.com` and `login.live.com`
+  endpoints were classified as credential theft. The exception checks all form destinations
+  and does not apply to lookalikes, HTTP, tenant domains or malware downloads.
+- **Verified:** 121 backend tests passed with `../.venv/Scripts/python -m pytest -q -p no:logging`
+  from `backend/`. New regressions failed before their fixes. The user's original Azure bill and
+  scam email were unavailable, so their exact live verdicts have not been reproduced.
+
 ## 2026-10-10: Gmail sign-in popup, equal-height panels
 
 - **Fixed:** closing the Google sign-in left "Connect Gmail" spinning forever. Sign-in now opens in

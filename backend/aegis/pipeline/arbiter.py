@@ -73,6 +73,9 @@ def arbitrate(risks: dict[str, float | None], strong: list[str],
         dissent.append(f"weighted score {score:.2f} overridden: {len(strong)} independent "
                        f"sources found strong evidence")
         label = "SCAM"
+    if strong and label == "LIKELY_SAFE":
+        label = "SUSPICIOUS"
+        dissent.append("strong evidence from one source: capped at SUSPICIOUS")
     if "forensic" not in present and label == "LIKELY_SAFE":
         label = "SUSPICIOUS"
         dissent.append("forensic analysis missing: capped at SUSPICIOUS")

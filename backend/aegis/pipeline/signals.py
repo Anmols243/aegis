@@ -123,7 +123,8 @@ _BRAND_DOMAINS = {
     # brand token -> legitimate domains (subset; extend as needed)
     "paypal": {"paypal.com"},
     "apple": {"apple.com", "icloud.com"},
-    "microsoft": {"microsoft.com", "outlook.com", "live.com"},
+    "microsoft": {"microsoft.com", "azure.com", "microsoftonline.com", "office.com",
+                  "office365.com", "outlook.com", "live.com"},
     "google": {"google.com", "gmail.com"},
     "amazon": {"amazon.com"},
     "netflix": {"netflix.com"},
@@ -131,6 +132,12 @@ _BRAND_DOMAINS = {
     "fedex": {"fedex.com"},
     "ups": {"ups.com"},
 }
+
+
+def _under_domain(host: str, root: str) -> bool:
+    """Match an exact domain or a subdomain, never a lookalike suffix."""
+    host = host.lower().rstrip(".")
+    return host == root or host.endswith("." + root)
 
 
 def check_display_name_spoof(sender: str) -> list[Signal]:
@@ -141,7 +148,7 @@ def check_display_name_spoof(sender: str) -> list[Signal]:
     display, addr = m.group(1).strip().lower(), m.group(2).lower()
     sender_domain = addr.split("@")[-1] if "@" in addr else ""
     for brand, legit in _BRAND_DOMAINS.items():
-        if brand in display and sender_domain not in legit:
+        if brand in display and not any(_under_domain(sender_domain, d) for d in legit):
             return [_sig("display-name-spoof", "high",
                          f"Display name claims '{brand.title()}' but the "
                          f"sender domain is {sender_domain}.",
@@ -154,6 +161,13 @@ def check_sender_link_mismatch(sender: str, urls: list[str]) -> list[Signal]:
     m = re.search(r"@([\w.\-]+)", sender or "")
     sender_domain = m.group(1).lower() if m else ""
     link_domains = _domains_of(urls)
+    # Azure billing uses microsoft.com senders and portal.azure.com links.
+    # Consumer mailbox domains are excluded: an Outlook address is not proof
+    # that a sender represents Microsoft.
+    microsoft_domains = _BRAND_DOMAINS["microsoft"] - {"outlook.com", "live.com"}
+    if any(_under_domain(sender_domain, d) for d in microsoft_domains) and any(
+            _under_domain(link, d) for link in link_domains for d in microsoft_domains):
+        return []
     if sender_domain and link_domains and not any(
             d == sender_domain or d.endswith("." + sender_domain)
             for d in link_domains):
@@ -364,7 +378,7 @@ def _similarity(a: str, b: str) -> float:
 KNOWN_GOOD = {
     "amazonaws.com", "googleapis.com", "gstatic.com", "googleusercontent.com",
     "fbcdn.net", "cdninstagram.com", "microsoftonline.com", "live.com",
-    "outlook.com", "office365.com",
+    "outlook.com", "office365.com", "azure.com", "office.com",
 }
 
 

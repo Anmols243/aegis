@@ -84,7 +84,7 @@ def parse_report(data: dict, sources: tuple[str, ...]) -> ForensicReport:
                                 excerpt=sanitize(excerpt, 300)))
     techniques = [t for t in as_str_list(data.get("deception_techniques")) if t in TECHNIQUES]
     return ForensicReport(findings=findings, techniques=list(dict.fromkeys(techniques)),
-                          risk_score=clamp_score(data.get("risk_score", 0.0), "risk_score"),
+                          risk_score=clamp_score(data.get("risk_score"), "risk_score"),
                           summary=prose(data.get("summary"), 600), dropped=dropped)
 
 

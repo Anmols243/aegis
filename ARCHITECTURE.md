@@ -62,14 +62,20 @@ then missing and the arbiter compensates.
 
 ## Arbiter
 
-- Weighted mean over present signals, weights renormalised: forensic 0.35, signals 0.20,
-  sandbox 0.15, vision 0.15, AgentBoxD phishing score 0.15.
-- Thresholds: SCAM at 0.70 or above, SUSPICIOUS at 0.40 or above, else LIKELY SAFE.
+- Weighted mean over present signals, weights renormalised: forensic 0.25, signals 0.35,
+  sandbox 0.15, vision 0.15, AgentBoxD phishing score 0.10.
+- Thresholds: SCAM at 0.65 or above, SUSPICIOUS at 0.35 or above, else LIKELY SAFE.
 - **Corroboration:** if two or more independent sources report strong evidence (forensic risk 0.85
   or more, a high-severity deterministic signal, a credential-harvest or malware page, visual brand
   impersonation at 0.7 or more, AgentBoxD phishing 0.85 or more), the label is SCAM. A dead phishing
   domain (sandbox "unreachable") cannot drag a doubly-confirmed scam down to SUSPICIOUS.
-- **Fail closed:** without the forensic analyst, never LIKELY SAFE.
+- **Fail closed:** without the forensic analyst, never LIKELY SAFE. A missing model risk score
+  fails validation. One strong source sets a SUSPICIOUS minimum even when the mean is lower.
+- **Microsoft billing:** legitimate Microsoft subdomains and Azure portal links do not count as
+  sender spoofing merely because their hostnames differ. This does not clear the email by itself.
+  The sandbox does not classify a password form on the exact HTTPS Microsoft sign-in hosts as
+  credential theft when every form targets those hosts. Lookalikes, external form destinations,
+  malware downloads and other email evidence retain their checks.
 - "Confidence" is the distance from the nearest threshold. It is a heuristic and is never presented
   as a calibrated probability.
 
