@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # --- privacy ---
     private_retention_days: int = 1           # pasted / inbox mail: body purged after this
     inbox_public: bool = False                # list AgentBoxD-forwarded mail publicly (demo only)
-    mailbox_poll_interval_s: int = 60
+    mailbox_poll_interval_s: int = 10            # seconds between checks of connected mailboxes
     mailbox_max_per_poll: int = 20
 
     # --- Sign in with Google (Gmail API). Unset = the button is hidden. ---

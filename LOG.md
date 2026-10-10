@@ -2,6 +2,19 @@
 
 Newest first.
 
+## 2026-10-10: Gmail connect is back as the Inbox tab (D15)
+
+- **Merged:** `saqib-gmail-inbox` (Saqib's Gmail inbox UI) into main, then rebuilt the page on the
+  site's components (`gmail-inbox.tsx`): PageHero with Connect, Check now and Disconnect; message
+  list beside the full verdict; refresh every 3 seconds; detail polls while the agents run.
+- **Fixed from the branch:** `deleteHistory` defined twice in `api.ts`; Disconnect parsed an empty
+  204 as JSON and reported failure; no auto-refresh; a nested `<main>`; 7 day retention instead of
+  the site's 24 hours; no handling when Google sign-in is not configured; lint error
+  (setState in effect). Restored `/connect` (the callback redirects there when sign-in returns to
+  another browser). Server mailbox checks every 10 seconds (was 60).
+- **Verified:** 106 backend tests; `tsc`, `lint`, `next build` clean; `/inbox` and `/connect`
+  screenshots. Not tested: a real Google sign-in (no OAuth client configured on this machine).
+
 ## 2026-10-10: Live "Test the system" hero, one page hero site-wide, copy refresh
 
 - **Changed (Live):** the address bar (address, Copy, code chip, two lines of rules) is replaced by a

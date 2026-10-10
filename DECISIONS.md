@@ -150,3 +150,16 @@ Append-only. A superseded decision gets a new entry; old entries are not rewritt
 - **Consequences:** The From header can be forged, so anyone who forges a linked address can push
   mail into that browser's view (they still cannot read anything). Mail sent before the first
   coded email stays unowned.
+
+## D15 (Oct 10, 2026): Bring back Gmail connect as the /inbox tab; supersedes D12's removal
+
+- **Decision:** Merge Saqib's `saqib-gmail-inbox` UI and rebuild it on the site's components:
+  `/inbox` connects Gmail with Google sign-in, shows each new email's verdict beside the list and
+  refreshes every 3 seconds; the server checks connected mailboxes every 10 seconds (was 60).
+  `/connect` (different-browser sign-in confirmation) is restored. The Live test inbox stays.
+- **Context:** The team wants the real-mailbox flow for the demo. The backend (OAuth, Gmail
+  polling, labels) never left; only the pages were removed in D12.
+- **Consequences:** Needs `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (README setup); without
+  them Connect is disabled. Mailbox mail is private to the browser that connected it, like all
+  other cases. A 10 second interval costs one Gmail `history.list` call per mailbox per check.
+

@@ -127,7 +127,7 @@ Backend settings (environment variables or `backend/.env`):
 | `PRIVATE_RETENTION_DAYS` | Days before pasted and inbox-forwarded email content is purged (default 1) |
 | `INBOX_PUBLIC=true` | Demo only: mark test-inbox mail public, so it appears in everyone's campaign graph (it is never listed on Cases or Live) |
 | `AGENTBOXD_BACKFILL_S` | On startup, also take inbox mail from this many seconds back (default 0; analyzed mail is skipped) |
-| `MAILBOX_POLL_INTERVAL_S` | How often connected mailboxes are checked (default 60) |
+| `MAILBOX_POLL_INTERVAL_S` | Seconds between checks of connected mailboxes (default 10) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Enable Sign in with Google (setup below) |
 | `GOOGLE_REDIRECT_URI` | Default `http://localhost:3000/api/v1/oauth/google/callback`; must match the OAuth client |
 | `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` | Enable Sign in with Microsoft (setup below) |
@@ -138,12 +138,12 @@ Frontend settings: `BACKEND_URL` (default `http://127.0.0.1:8000`) and `AEGIS_AP
 
 Tests: `cd backend && .venv/bin/python -m pytest` (82 tests, no network or API key needed).
 
-> The mailbox sign-in UI (`/inbox`) was removed on Oct 8, 2026 (DECISIONS D12). The backend routes
-> and the setup below still work for the API, but no page uses them.
+> `/inbox` connects Gmail (DECISIONS D15): the backend checks it every `MAILBOX_POLL_INTERVAL_S`
+> seconds and the page refreshes every 3 seconds. Until the setup below is done, Connect is disabled.
 
 ### Sign in with Google (optional, about 10 minutes, once)
 
-Without these two settings the Google button is hidden. Do this in a normal browser, not an app's
+Without these two settings the Connect Gmail button on `/inbox` is disabled. Do this in a normal browser, not an app's
 built-in browser panel (Google blocks sign-in there).
 
 1. In [Google Cloud console](https://console.cloud.google.com/) create a project, open

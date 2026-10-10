@@ -201,10 +201,29 @@ export interface Mailbox {
   manage_url: string | null
 }
 
+export interface MailboxProvider {
+  id: string
+  name: string
+  covers: string
+  /** False until the server has that provider's OAuth client configured. */
+  supported: boolean
+}
+
 export interface OAuthStart {
   url: string
   state: string
   pair: string
+}
+
+export type SignInState = "pending" | "exchanging" | "confirm" | "saving" | "connected" | "cancelled" | "error" | "expired"
+
+/** Sign-in that returned to a different browser: confirm it matches the starting window's code. */
+export interface SignInPairing {
+  status: SignInState
+  provider: string
+  email: string | null
+  pair: string
+  error?: string | null
 }
 
 export interface LiveInboxItem {
@@ -412,51 +431,35 @@ export const api = {
     request<Paged<AnalysisSummary>>(
       `/analyses${qs({ limit: p.limit ?? 20, cursor: p.cursor, label: p.label, q: p.q, mine: p.mine ? "true" : null })}`,
     ),
-
-      deleteHistory: () => request<{ deleted: number }>("/history", { method: "DELETE" }),
   /** Erase every case this browser analyzed (pasted and emailed). */
-    analysis: (id: string) => request<Analysis>(`/analyses/${encodeURIComponent(id)}`),
+  deleteHistory: () => request<{ deleted: number }>("/history", { method: "DELETE" }),
+  analysis: (id: string) => request<Analysis>(`/analyses/${encodeURIComponent(id)}`),
   abuseReport: (id: string) => request<{ markdown: string }>(`/analyses/${encodeURIComponent(id)}/abuse-report`),
   share: (token: string) => request<Analysis>(`/share/${encodeURIComponent(token)}`),
   eventsUrl: (id: string) => `${BASE}/analyses/${encodeURIComponent(id)}/events`,
 
-  mailboxProviders: () =>
-    request<{ id: string; name: string; covers: string; supported: boolean }[]>(
-      "/mailbox-providers",
-    ),
-
-  startOAuth: (provider: string, retentionDays = 7) =>
+  mailboxProviders: () => request<MailboxProvider[]>("/mailbox-providers"),
+  /** Start Sign in with Google (or Microsoft); open `url` in this tab. */
+  startOAuth: (provider: string, retentionDays = 1) =>
     request<OAuthStart>(`/oauth/${encodeURIComponent(provider)}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ retention_days: retentionDays }),
     }),
-
+  signInPairing: (state: string) => request<SignInPairing>(`/oauth/pairing?state=${encodeURIComponent(state)}`),
+  signInConfirm: (state: string, connect: boolean) =>
+    request<{ status: "connected" | "cancelled"; email?: string }>("/oauth/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state, connect }),
+    }),
   listMailboxes: () => request<Mailbox[]>("/mailboxes"),
-
-  checkMailbox: (mailboxId: string) =>
-    request<{ ok: boolean }>(
-      `/mailboxes/${encodeURIComponent(mailboxId)}/check`,
-      { method: "POST" },
-    ),
-
-  pauseMailbox: (mailboxId: string) =>
-    request<Mailbox>(
-      `/mailboxes/${encodeURIComponent(mailboxId)}/pause`,
-      { method: "POST" },
-    ),
-
-  resumeMailbox: (mailboxId: string) =>
-    request<Mailbox>(
-      `/mailboxes/${encodeURIComponent(mailboxId)}/resume`,
-      { method: "POST" },
-    ),
-
-  removeMailbox: (mailboxId: string, purge = false) =>
-    request<void>(
-      `/mailboxes/${encodeURIComponent(mailboxId)}?purge=${purge}`,
-      { method: "DELETE" },
-    ),
+  checkMailbox: (id: string) => request<{ ok: boolean }>(`/mailboxes/${encodeURIComponent(id)}/check`, { method: "POST" }),
+  pauseMailbox: (id: string) => request<Mailbox>(`/mailboxes/${encodeURIComponent(id)}/pause`, { method: "POST" }),
+  resumeMailbox: (id: string) => request<Mailbox>(`/mailboxes/${encodeURIComponent(id)}/resume`, { method: "POST" }),
+  /** 204, no body. */
+  removeMailbox: (id: string, purge = false) =>
+    send(`/mailboxes/${encodeURIComponent(id)}?purge=${purge}`, { method: "DELETE" }).then(() => undefined),
 
   campaigns: () => request<CampaignsResponse>("/campaigns"),
 
