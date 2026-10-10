@@ -73,6 +73,9 @@ then missing and the arbiter compensates.
   fails validation. The forensic stage retries invalid JSON or scores once with explicit format
   instructions and validates the replacement, including evidence grounding. Two invalid replies
   leave the stage failed. One strong source sets a SUSPICIOUS minimum even when the mean is lower.
+- **Forensic output format:** the provider receives a JSON schema requiring a numeric `risk_score`
+  in the range 0 to 1, findings with evidence, techniques and summary. Local validation and evidence
+  grounding still run after generation.
 - **Microsoft billing:** legitimate Microsoft subdomains and Azure portal links do not count as
   sender spoofing merely because their hostnames differ. This does not clear the email by itself.
   The sandbox does not classify a password form on the exact HTTPS Microsoft sign-in hosts as

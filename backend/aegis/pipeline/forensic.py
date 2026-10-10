@@ -51,6 +51,34 @@ Rules:
 
 SEVERITIES = {"high", "medium", "low"}
 
+REPORT_SCHEMA = {
+    "type": "object", "additionalProperties": False,
+    "required": ["risk_score", "findings", "deception_techniques", "summary"],
+    "properties": {
+        "risk_score": {"type": "number", "minimum": 0, "maximum": 1},
+        "summary": {"type": "string"},
+        "deception_techniques": {"type": "array", "items": {
+            "type": "string", "enum": TECHNIQUES}},
+        "findings": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False,
+            "required": ["claim", "severity", "evidence"],
+            "properties": {
+                "claim": {"type": "string"},
+                "severity": {"type": "string", "enum": ["high", "medium", "low"]},
+                "evidence": {
+                    "type": "object", "additionalProperties": False,
+                    "required": ["artifact", "excerpt"],
+                    "properties": {
+                        "artifact": {"type": "string", "enum": [
+                            "header", "subject", "body", "url", "attachment"]},
+                        "excerpt": {"type": "string"}
+                    }
+                }
+            }
+        }}
+    }
+}
+
 
 @dataclass
 class Finding:
@@ -118,7 +146,7 @@ async def run(ctx: PipelineContext) -> StageResult:
     for attempt in range(2):
         try:
             data = await ctx.llm.chat_json(ctx.settings.model_forensic, messages,
-                                           max_tokens=2500)
+                                           max_tokens=2500, response_schema=REPORT_SCHEMA)
             report = parse_report(data, e.sources())
             break
         except ValueError as exc:

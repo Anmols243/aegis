@@ -91,11 +91,15 @@ class LLMClient:
 
     async def chat(self, model: str, messages: list[dict[str, Any]],
                    json_mode: bool = False, temperature: float = 0.0,
-                   max_tokens: int = 2000) -> str:
+                   max_tokens: int = 2000, response_schema: dict | None = None) -> str:
         client = self._get()
         kwargs: dict[str, Any] = {"model": model, "messages": messages,
                                   "temperature": temperature, "max_tokens": max_tokens}
-        if json_mode:
+        if response_schema is not None:
+            kwargs["response_format"] = {
+                "type": "json_schema", "json_schema": {
+                    "name": "aegis_report", "strict": True, "schema": response_schema}}
+        elif json_mode:
             kwargs["response_format"] = {"type": "json_object"}
         async with self._sem:
             resp = await client.chat.completions.create(**kwargs)

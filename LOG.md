@@ -2,6 +2,18 @@
 
 Newest first.
 
+## 2026-10-10: Require forensic report fields in the inference request
+
+- **Observed live:** after the diagnostic deployment, harmless test case
+  `a_1a124b76bcfb3d8ed1a87861169` failed with `risk_score is not numeric` after both attempts.
+  Plain JSON mode did not require the forensic report's score field.
+- **Changed:** forensic inference now sends a JSON schema requiring the numeric risk score,
+  findings and evidence, techniques and summary. Triage and vision keep their existing JSON mode.
+  Local report validation, grounding and the bounded retry still apply.
+- **Verified locally:** 132 backend tests passed, including the required numeric score schema
+  crossing the real client/provider request boundary. Live provider compatibility is checked
+  separately after Render deploys.
+
 ## 2026-10-10: Live forensic failure persists after retries
 
 - **Observed:** case `a_1a124b080c5be5486d0a407627f` and a new harmless lunch-message

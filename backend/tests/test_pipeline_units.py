@@ -514,6 +514,33 @@ async def test_missing_choices_after_token_retry_is_bad_output():
     assert len(calls) == 2
 
 
+async def test_forensic_sends_required_numeric_score_schema_to_provider():
+    from types import SimpleNamespace
+
+    from aegis.core.config import Settings
+    from aegis.providers.llm import LLMClient
+
+    async def create(**kwargs):
+        output = kwargs["response_format"]
+        assert output["type"] == "json_schema"
+        schema = output["json_schema"]["schema"]
+        assert "risk_score" in schema["required"]
+        assert schema["properties"]["risk_score"] == {
+            "type": "number", "minimum": 0, "maximum": 1}
+        return SimpleNamespace(choices=[SimpleNamespace(
+            message=SimpleNamespace(content='{"risk_score":0.1,"findings":[],'
+                                            '"deception_techniques":[],"summary":"Ordinary mail."}'),
+            finish_reason="stop")])
+
+    settings = Settings(featherless_api_key="test-key")
+    llm = LLMClient(settings)
+    llm._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    ctx = SimpleNamespace(email=parse_email("Lunch tomorrow?"), results={},
+                          provider_scores={}, llm=llm, settings=settings)
+    result = await forensic.run(ctx)
+    assert result.value.risk_score == 0.1
+
+
 def test_strip_code_from_subject():
     from aegis.services.claims import strip_code
     assert strip_code("Test AEGIS AEGIS-W5ZM4R") == "Test AEGIS"
