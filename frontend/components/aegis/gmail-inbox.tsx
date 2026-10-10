@@ -176,7 +176,7 @@ export function GmailInbox() {
       await api.removeMailbox(mailbox.id)
       toast.success("Gmail disconnected")
       setPinned(null)
-      setSnap((prev) => (prev ? { mailboxes: [], items: prev.items } : prev))
+      setRefresh((n) => n + 1)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not disconnect Gmail.")
     } finally {
