@@ -154,7 +154,7 @@ function StatStrip({ campaigns }: { campaigns: Campaign[] }) {
 
 function CampaignList({ campaigns, selectedId, onSelect }: { campaigns: Campaign[]; selectedId: string; onSelect: (id: string) => void }) {
   return (
-    <aside aria-labelledby="camp-list" className="hud flex min-w-0 flex-col self-start p-2 lg:sticky lg:top-24">
+    <aside aria-labelledby="camp-list" className="hud flex min-w-0 flex-col p-2">
       <h2 id="camp-list" className="label-mono flex items-center justify-between px-3 pb-2 pt-3">
         <span>Campaigns</span>
         <span className="text-faint">{campaigns.length}</span>

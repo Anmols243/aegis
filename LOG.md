@@ -2,6 +2,19 @@
 
 Newest first.
 
+## 2026-10-10: Gmail sign-in popup, equal-height panels
+
+- **Fixed:** closing the Google sign-in left "Connect Gmail" spinning forever. Sign-in now opens in
+  a popup; if it closes without a connected Gmail the button shows "Connection failed" for 2
+  seconds, then "Connect Gmail" again. On success the popup posts back and closes itself; popups
+  blocked fall back to same-tab sign-in, and Back from Google also resets the button.
+- **Changed:** side-by-side panels end at the same height: Analyze (form grows, textarea fills),
+  Campaigns (list no longer sticky/short), Red Team (a Results panel fills the left column until a
+  round runs).
+- **Verified:** `tsc`, `lint`, `next build`; in a browser, closing the popup logged "Waiting for
+  Google" then "Connection failed" (1.2 s) then "Connect Gmail" (2 s later); column heights equal
+  on all three pages (676, 706, 843 px pairs). Google client accepted (sign-in page loads).
+
 ## 2026-10-10: Gmail connect is back as the Inbox tab (D15)
 
 - **Merged:** `saqib-gmail-inbox` (Saqib's Gmail inbox UI) into main, then rebuilt the page on the

@@ -61,9 +61,9 @@ export function AnalyzeForm() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-      <BorderBeam className="min-w-0 self-start rounded-[1.25rem]" radius={20} duration={8}>
+      <BorderBeam className="min-w-0 rounded-[1.25rem]" radius={20} duration={8}>
         <form
-          className="hud hud-glow flex flex-col gap-4 p-5 sm:p-6"
+          className="hud hud-glow flex h-full flex-col gap-4 p-5 sm:p-6"
           onSubmit={(e) => {
             e.preventDefault()
             void submit()
@@ -103,7 +103,7 @@ export function AnalyzeForm() {
                 setDragging(false)
                 pickFile(e.dataTransfer.files?.[0])
               }}
-              className={cn("relative rounded-xl transition-colors", dragging && "ring-2 ring-lime")}
+              className={cn("relative flex flex-1 flex-col rounded-xl transition-colors", dragging && "ring-2 ring-lime")}
             >
               <textarea
                 id="raw"
@@ -111,7 +111,7 @@ export function AnalyzeForm() {
                 onChange={(e) => setRaw(e.target.value)}
                 placeholder={"From: PayPal Security <security@paypa1-secure.com>\nSubject: Your account will be limited\n\nDear Customer, ..."}
                 spellCheck={false}
-                className="thin-scroll h-72 w-full resize-y rounded-xl border border-hair bg-black/40 p-4 font-mono text-[13px] leading-relaxed text-ink placeholder:text-faint focus:border-lime/50 focus:outline-none sm:h-80"
+                className="thin-scroll min-h-72 w-full flex-1 resize-y rounded-xl border border-hair bg-black/40 p-4 font-mono text-[13px] leading-relaxed text-ink placeholder:text-faint focus:border-lime/50 focus:outline-none sm:min-h-80"
               />
               {dragging ? (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-black/70 font-mono text-sm text-lime">

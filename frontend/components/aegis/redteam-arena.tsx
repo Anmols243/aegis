@@ -217,7 +217,14 @@ export function RedteamArena() {
               ))}
             </ul>
           </section>
-        ) : null}
+        ) : (
+          // Fills the column until a round runs, so it lines up with the scoreboard beside it.
+          <section aria-label="Results" className="hud flex min-h-48 flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+            <Crosshair className="size-5 text-lime" aria-hidden="true" />
+            <p className="label-mono text-[12px] text-muted-foreground">Results</p>
+            <p className="max-w-sm text-sm text-faint">Pick a seed and launch a round. Each disguised variant shows up here as it runs, marked caught or missed.</p>
+          </section>
+        )}
       </div>
 
       <aside className="flex min-w-0 flex-col gap-6">

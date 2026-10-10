@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowUpRight, Loader2, Lock, Mail, MailOpen, RefreshCw, Unplug } from "lucide-react"
+import { ArrowUpRight, Loader2, Lock, Mail, MailOpen, RefreshCw, Unplug, XCircle } from "lucide-react"
 import { toast } from "sonner"
 
 import { ErrorState, LoadingState, VerdictBadge } from "@/components/aegis/bits"
@@ -31,13 +31,60 @@ export function GmailInbox() {
   // The sign-in callback returns to /inbox?signin=connected or ?signin_error=...
   const [signin] = React.useState(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search)))
 
+  const [failed, setFailed] = React.useState(false)
+  const failTimer = React.useRef(0)
+  const popupWatch = React.useRef(0)
+
+  // Shows "Connection failed" on the button for 2 seconds, then "Connect Gmail" again.
+  const fail = React.useCallback(() => {
+    window.clearInterval(popupWatch.current)
+    setBusy(null)
+    setFailed(true)
+    window.clearTimeout(failTimer.current)
+    failTimer.current = window.setTimeout(() => setFailed(false), 2000)
+  }, [])
+
   React.useEffect(() => {
     if (!signin) return
-    if (signin.get("signin") === "connected") toast.success("Gmail connected", { description: "AEGIS is reading your new mail now." })
+    const ok = signin.get("signin") === "connected"
     const err = signin.get("signin_error")
+    if (!ok && !err) return
+    // In the sign-in popup: hand the result to the page that opened it and close.
+    if (window.opener && window.opener !== window) {
+      window.opener.postMessage({ type: "aegis-signin", ok, error: err }, window.location.origin)
+      window.close()
+      return
+    }
+    if (ok) toast.success("Gmail connected", { description: "AEGIS is reading your new mail now." })
     if (err) toast.error(err)
-    if (signin.has("signin") || err) window.history.replaceState(null, "", "/inbox")
+    window.history.replaceState(null, "", "/inbox")
   }, [signin])
+
+  React.useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.data?.type !== "aegis-signin") return
+      window.clearInterval(popupWatch.current)
+      if (e.data.ok) {
+        setBusy(null)
+        toast.success("Gmail connected", { description: "AEGIS is reading your new mail now." })
+        setRefresh((n) => n + 1)
+      } else {
+        fail()
+      }
+    }
+    // Back from Google with the browser's Back button: the page comes from the cache mid-connect.
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) fail()
+    }
+    window.addEventListener("message", onMessage)
+    window.addEventListener("pageshow", onPageShow)
+    return () => {
+      window.removeEventListener("message", onMessage)
+      window.removeEventListener("pageshow", onPageShow)
+      window.clearInterval(popupWatch.current)
+      window.clearTimeout(failTimer.current)
+    }
+  }, [fail])
 
   React.useEffect(() => {
     api
@@ -75,12 +122,37 @@ export function GmailInbox() {
 
   const connect = async () => {
     setBusy("connect")
+    setFailed(false)
+    // Opened before the request, while the click still counts, so popup blockers allow it.
+    const popup = window.open("", "aegis-google-signin", "popup,width=520,height=680")
     try {
       const r = await api.startOAuth("google")
-      window.location.href = r.url
+      if (!popup) {
+        window.location.href = r.url // popups blocked: sign in in this tab
+        return
+      }
+      popup.location.href = r.url
+      // Closed without finishing (or Google said no): ask the server whether a mailbox exists.
+      window.clearInterval(popupWatch.current)
+      popupWatch.current = window.setInterval(async () => {
+        if (!popup.closed) return
+        window.clearInterval(popupWatch.current)
+        try {
+          const boxes = await api.listMailboxes()
+          if (boxes.some((m) => m.provider === "google")) {
+            setBusy(null)
+            setRefresh((n) => n + 1)
+            return
+          }
+        } catch {
+          /* treated as a failure below */
+        }
+        fail()
+      }, 500)
     } catch (e) {
+      popup?.close()
       toast.error(e instanceof Error ? e.message : "Could not start Google sign-in.")
-      setBusy(null)
+      fail()
     }
   }
 
@@ -153,9 +225,25 @@ export function GmailInbox() {
           </>
         ) : snap ? (
           <>
-            <button type="button" onClick={() => void connect()} disabled={!!busy || !google?.supported} className={cn(HERO_PRIMARY, "disabled:opacity-40 disabled:shadow-none")}>
-              {busy === "connect" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Mail className="size-4" aria-hidden="true" />}
-              Connect Gmail
+            <button
+              type="button"
+              onClick={() => void connect()}
+              disabled={!!busy || failed || !google?.supported}
+              aria-live="polite"
+              className={cn(
+                HERO_PRIMARY,
+                "disabled:shadow-none",
+                failed ? "border border-scam/50 bg-scam/15 text-scam" : "disabled:opacity-40",
+              )}
+            >
+              {failed ? (
+                <XCircle className="size-4" aria-hidden="true" />
+              ) : busy === "connect" ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Mail className="size-4" aria-hidden="true" />
+              )}
+              {failed ? "Connection failed" : busy === "connect" ? "Waiting for Google" : "Connect Gmail"}
             </button>
             <p className="max-w-xs font-mono text-[10.5px] text-faint lg:text-right">
               {google?.supported ? "Read-only scan plus AEGIS labels. Disconnect any time." : "Google sign-in is not set up on this server yet (GOOGLE_CLIENT_ID)."}
